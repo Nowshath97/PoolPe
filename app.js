@@ -169,7 +169,7 @@ function login() {
 function logout() {
   localStorage.removeItem(SESSION);
   session = null;
-  window.location.href = "poolpay_landing_page.html?login=1";
+  window.location.href = "index.html?login=1";
 }
 function shell(content, u) {
   return `<header class="top"><div class="logo">PoolPe</div><div class="navuser"><span class="muted">${u.name} · ${u.role}</span><button class="btn secondary" onclick="logout()">Logout</button></div></header><main class="wrap">${content}</main>`;
