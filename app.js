@@ -149,7 +149,7 @@ function render() {
 }
 function loginView() {
   document.getElementById("app").innerHTML =
-    `<div class="login"><div class="loginbox"><div class="logo">PoolPe</div><h1>Welcome back</h1><p class="muted">Sign in to manage or view your pool group.</p><div class="demo"><div class="field"><label>Email</label><input id="email"></div><div class="field"><label>Password</label><input id="password" type="password"></div><button class="btn primary" style="width:100%" onclick="login()">Sign in</button><p class="small muted">GitHub-only demo: authentication and data are stored in this browser.</p></div></div>`;
+    `<div class="login"><div class="loginbox"><div class="logo">PoolPe</div><h1>Welcome back</h1><p class="muted">Sign in to manage or view your pool group.</p><div class="demo"><b>Demo accounts</b><div class="field"><label>Email</label><input id="email"></div><div class="field"><label>Password</label><input id="password" type="password"></div><button class="btn primary" style="width:100%" onclick="login()">Sign in</button><p class="small muted">GitHub-only demo: authentication and data are stored in this browser.</p></div></div>`;
 
 }
 function login() {
@@ -169,7 +169,7 @@ function login() {
 function logout() {
   localStorage.removeItem(SESSION);
   session = null;
-  render();
+  window.location.href = "poolpay_landing_page.html?login=1";
 }
 function shell(content, u) {
   return `<header class="top"><div class="logo">PoolPe</div><div class="navuser"><span class="muted">${u.name} · ${u.role}</span><button class="btn secondary" onclick="logout()">Logout</button></div></header><main class="wrap">${content}</main>`;
