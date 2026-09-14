@@ -18,7 +18,7 @@ section{padding:70px 0}.section-title{text-align:center;margin-bottom:38px}.sect
 .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:25px;text-align:center}.step-circle{width:65px;height:65px;border-radius:50%;display:grid;place-items:center;margin:0 auto 15px;background:#edf7ff;font-size:27px}.step h3{font-size:15px}.step p{font-size:13px;color:var(--muted);line-height:1.5}
 .cta{background:linear-gradient(90deg,#e6fbf5,#e8f9ff);border-radius:14px;padding:25px 30px;display:flex;justify-content:space-between;align-items:center;margin-top:55px}.cta h3{margin:0 0 5px}.cta p{margin:0;color:var(--muted);font-size:14px}
 footer{background:#063568;color:#fff;padding:32px 0}.foot{display:flex;justify-content:space-between;align-items:center}.foot .brand .pool,.foot .brand .pay{color:#fff}.foot small{opacity:.75}
-#loginPage{display:none;min-height:100vh;background:radial-gradient(circle at 75% 80%,#e2fbf4,#f7fcff 45%,#fff 70%)}.login-top{padding:28px 5%;display:flex;justify-content:space-between;align-items:center}.login-wrap{display:grid;place-items:center;padding:35px 20px 90px}.login-card{width:min(480px,94vw);background:#fff;border-radius:18px;padding:45px;box-shadow:0 15px 55px #16486816}.login-card h1{text-align:center;margin:0 0 7px}.login-card>p{text-align:center;color:var(--muted);margin:0 0 32px}.field{margin-bottom:20px}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:8px}.field input{width:100%;padding:14px;border:1px solid #cedbe5;border-radius:7px;font-size:14px;outline:none}.field input:focus{border-color:var(--teal);box-shadow:0 0 0 3px #00ae9117}.row{display:flex;justify-content:space-between;font-size:13px;margin:2px 0 25px}.login-card .btn{width:100%;font-size:15px}.admin{text-align:center;margin-top:25px;font-size:13px;color:var(--muted)}.admin a{color:var(--blue);font-weight:700}.back{color:var(--blue);font-weight:700;font-size:14px;cursor:pointer}
+#loginPage{display:none;min-height:100vh;background:radial-gradient(circle at 75% 80%,#e2fbf4,#f7fcff 45%,#fff 70%)}#loginPage:target{display:block}body:has(#loginPage:target) #landingPage{display:none}.login-top{padding:28px 5%;display:flex;justify-content:space-between;align-items:center}.login-wrap{display:grid;place-items:center;padding:35px 20px 90px}.login-card{width:min(480px,94vw);background:#fff;border-radius:18px;padding:45px;box-shadow:0 15px 55px #16486816}.login-card h1{text-align:center;margin:0 0 7px}.login-card>p{text-align:center;color:var(--muted);margin:0 0 32px}.field{margin-bottom:20px}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:8px}.field input{width:100%;padding:14px;border:1px solid #cedbe5;border-radius:7px;font-size:14px;outline:none}.field input:focus{border-color:var(--teal);box-shadow:0 0 0 3px #00ae9117}.row{display:flex;justify-content:space-between;font-size:13px;margin:2px 0 25px}.login-card .btn{width:100%;font-size:15px}.admin{text-align:center;margin-top:25px;font-size:13px;color:var(--muted)}.admin a{color:var(--blue);font-weight:700}.back{color:var(--blue);font-weight:700;font-size:14px;cursor:pointer}
 @media(max-width:900px){.links{display:none}.hero-grid{grid-template-columns:1fr}.hero h1{font-size:43px}.visual{min-height:360px}.cards{grid-template-columns:repeat(2,1fr)}.steps{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.hero{padding-top:42px}.hero h1{font-size:36px}.hero p{font-size:16px}.trust{flex-direction:column;gap:10px}.cards,.steps{grid-template-columns:1fr}.cta,.foot{flex-direction:column;gap:20px;text-align:center}.bubble{width:88px;height:88px}.login-card{padding:30px 22px}}
 .login-error{display:none;margin:0 0 16px;padding:10px 12px;border-radius:7px;background:#fff1f0;color:#b42318;font-size:13px}
@@ -29,14 +29,14 @@ footer{background:#063568;color:#fff;padding:32px 0}.foot{display:flex;justify-c
 <header><div class="container"><nav>
 <a class="brand" href="#"><img class="brand-logo" src="logo.jpg" alt="PoolPay"></a>
 <div class="links"><a href="#home">Home</a><a href="#features">Features</a><a href="#how">How It Works</a><a href="#benefits">Benefits</a><a href="#about">About</a></div>
-<button class="btn btn-primary login-trigger">Login</button>
+<a class="btn btn-primary login-trigger" href="#loginPage">Login</a>
 </nav></div></header>
 
 <main id="home" class="hero"><div class="container hero-grid">
 <div><div class="eyebrow">CHIT FUND SIMPLIFIED</div>
 <h1>Easily Manage<br>Your Chit Funds<br>with <span class="accent">PoolPay</span></h1>
 <p>A simple, secure and smart way to manage your chit groups, collections, auctions and payouts — all in one place.</p>
-<div class="actions"><a class="btn btn-primary" href="#features">Get Started</a><button class="btn btn-outline login-trigger">Login</button></div>
+<div class="actions"><a class="btn btn-primary" href="#features">Get Started</a><a class="btn btn-outline login-trigger" href="#loginPage">Login</a></div>
 <div class="trust"><span>Secure & Reliable</span><span>Easy to Use</span><span>Built for Groups</span></div>
 </div>
 <div class="visual">
@@ -67,7 +67,7 @@ footer{background:#063568;color:#fff;padding:32px 0}.foot{display:flex;justify-c
 <div class="step"><div class="step-circle">🔨</div><h3>3. Conduct Auction</h3><p>Manage bids and record the winning member and payout.</p></div>
 <div class="step"><div class="step-circle">📊</div><h3>4. Stay Updated</h3><p>Review reports, pending dues and group activity from your dashboard.</p></div>
 </div>
-<div class="cta"><div><h3>Ready to Simplify Your Chit Fund Management?</h3><p>Use PoolPay to manage your groups in one convenient place.</p></div><button class="btn btn-primary login-trigger">Login Now →</button></div>
+<div class="cta"><div><h3>Ready to Simplify Your Chit Fund Management?</h3><p>Use PoolPay to manage your groups in one convenient place.</p></div><a class="btn btn-primary login-trigger" href="#loginPage">Login Now →</a></div>
 </div></section>
 
 <footer id="about"><div class="container foot"><div class="brand"><img class="brand-logo" src="logo.jpg" alt="PoolPay"></div><small>© 2026 PoolPay. All rights reserved.</small><small>Simple People. Stronger Together.</small></div></footer>
@@ -89,7 +89,7 @@ footer{background:#063568;color:#fff;padding:32px 0}.foot{display:flex;justify-c
 <script>
 const landing=document.getElementById('landingPage'), login=document.getElementById('loginPage');
 function showLogin(){landing.style.display='none';login.style.display='block';window.scrollTo(0,0)}
-function showHome(e){if(e)e.preventDefault();login.style.display='none';landing.style.display='block';history.replaceState(null,'',location.pathname);window.scrollTo(0,0)}
+function showHome(e){if(e)e.preventDefault();login.style.display='none';landing.style.display='block';history.replaceState(null,'',new URL('./',window.location.href).pathname);window.scrollTo(0,0)}
 document.querySelectorAll('.login-trigger').forEach(b=>b.addEventListener('click',showLogin));
 document.getElementById('backHome').addEventListener('click',showHome);
 document.getElementById('logoBack').addEventListener('click',showHome);
@@ -99,14 +99,16 @@ event.preventDefault();
 const email=document.getElementById('landingEmail').value.trim().toLowerCase();
 const password=document.getElementById('landingPassword').value;
 const error=document.getElementById('loginError');
-const users=JSON.parse(localStorage.getItem('poolpe_v2_3_data')||'{}').users||[
+let savedData={};
+try{savedData=JSON.parse(localStorage.getItem('poolpe_v2_3_data')||'{}')}catch{}
+const users=savedData.users||[
 {id:'u1',email:'manager@demo.com',password:'demo123'},
 {id:'u2',email:'nowshath@demo.com',password:'demo123'}
 ];
 const account=users.find(user=>user.email.toLowerCase()===email&&user.password===password);
 if(!account){error.textContent='Invalid email or password. Use one of the demo accounts.';error.style.display='block';return}
 localStorage.setItem('poolpe_v2_3_session',JSON.stringify({userId:account.id}));
-window.location.href='dashboard.html';
+window.location.assign(new URL('dashboard.html',window.location.href).href);
 });
 </script>
 </body></html>
