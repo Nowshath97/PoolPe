@@ -105,7 +105,7 @@ const users=JSON.parse(localStorage.getItem('poolpe_v2_3_data')||'{}').users||[
 const account=users.find(user=>user.email.toLowerCase()===email&&user.password===password);
 if(!account){error.textContent='Invalid email or password. Use one of the demo accounts.';error.style.display='block';return}
 localStorage.setItem('poolpe_v2_3_session',JSON.stringify({userId:account.id}));
-window.location.href='index.html';
+window.location.href='dashboard.html';
 });
 </script>
 </body></html>
