@@ -1,114 +1,1150 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PoolPay | Chit Fund Simplified</title>
 <link rel="icon" type="image/png" sizes="512x512" href="favicon.png">
+
 <style>
 :root{--navy:#073b78;--blue:#0756ad;--teal:#00ae91;--mint:#e9fbf7;--text:#102f55;--muted:#5d6f84;--line:#e5edf4}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--text);background:#fff}
-a{text-decoration:none;color:inherit}.container{width:min(1180px,92%);margin:auto}
-header{height:74px;display:flex;align-items:center;border-bottom:1px solid #eef4f8;background:#fff;position:sticky;top:0;z-index:20}
-nav{display:flex;align-items:center;justify-content:space-between;width:100%}.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:27px}.mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#0873d1,#00c998);color:#fff;font-size:23px;box-shadow:inset 0 0 0 6px rgba(255,255,255,.22)}.brand .pool{color:var(--navy)}.brand .pay{color:var(--teal)}
-.brand-logo{display:block;width:154px;height:48px;object-fit:contain;object-position:left center}.phone-logo{display:block;width:142px;height:90px;object-fit:contain}.login-brand-logo{display:block;width:180px;height:112px;object-fit:contain;object-position:left center}.links{display:flex;gap:32px;font-size:14px;font-weight:600}.btn{border:0;border-radius:8px;padding:13px 25px;font-weight:700;cursor:pointer;font-size:14px}.btn-primary{background:linear-gradient(135deg,#0755a9,#063c83);color:#fff;box-shadow:0 5px 14px #0755a926}.btn-outline{background:#fff;border:1.5px solid var(--blue);color:var(--blue)}
-.hero{background:radial-gradient(circle at 78% 45%,#d8fff3 0,#e9fbff 25%,#f7fcff 57%,#fff 80%);padding:65px 0 58px}.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:50px}.eyebrow{letter-spacing:6px;font-size:12px;font-weight:800;margin-bottom:18px}.hero h1{font-size:54px;line-height:1.08;margin:0 0 22px;letter-spacing:-1.7px}.accent{color:var(--teal)}.hero p{font-size:18px;line-height:1.65;color:#49647e;max-width:620px}.actions{display:flex;gap:14px;margin:30px 0}.trust{display:flex;gap:28px;margin-top:30px;font-size:13px;color:#466078;font-weight:600}.trust span:before{content:"✓";color:var(--teal);font-weight:900;margin-right:7px}
-.visual{min-height:390px;position:relative;display:grid;place-items:center}.phone{width:190px;height:355px;border:9px solid #123d68;border-radius:30px;background:#fff;box-shadow:0 25px 45px #174a6e32;display:grid;place-items:center;transform:rotate(4deg);z-index:2}.phone .brand{display:block;text-align:center;font-size:24px}.phone .mark{margin:0 auto 9px}.bubble{position:absolute;width:105px;height:105px;border-radius:50%;background:#ffffffc9;border:1px solid #d8eef4;box-shadow:0 8px 22px #24526d13;display:grid;place-items:center;text-align:center;font-size:12px;font-weight:700;padding:12px}.bubble b{font-size:27px;color:var(--teal);display:block}.b1{left:4%;top:8%}.b2{right:2%;top:11%}.b3{left:1%;bottom:8%}.b4{right:0;bottom:7%}
-section{padding:70px 0}.section-title{text-align:center;margin-bottom:38px}.section-title h2{font-size:30px;margin:0 0 8px}.section-title p{color:var(--muted);margin:0}.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}.card{border-radius:13px;padding:27px 18px;text-align:center;min-height:185px;border:1px solid #e7f0f3}.card:nth-child(1){background:#edf8ff}.card:nth-child(2){background:#eafbf5}.card:nth-child(3){background:#f5efff}.card:nth-child(4){background:#fff5ec}.card:nth-child(5){background:#f0f2ff}.ico{font-size:29px;margin-bottom:15px}.card h3{font-size:15px;margin:0 0 10px}.card p{font-size:13px;line-height:1.5;color:#617185;margin:0}
-.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:25px;text-align:center}.step-circle{width:65px;height:65px;border-radius:50%;display:grid;place-items:center;margin:0 auto 15px;background:#edf7ff;font-size:27px}.step h3{font-size:15px}.step p{font-size:13px;color:var(--muted);line-height:1.5}
-.cta{background:linear-gradient(90deg,#e6fbf5,#e8f9ff);border-radius:14px;padding:25px 30px;display:flex;justify-content:space-between;align-items:center;margin-top:55px}.cta h3{margin:0 0 5px}.cta p{margin:0;color:var(--muted);font-size:14px}
-footer{background:#063568;color:#fff;padding:32px 0}.foot{display:flex;justify-content:space-between;align-items:center}.foot .brand .pool,.foot .brand .pay{color:#fff}.foot small{opacity:.75}
-#loginPage{display:none;min-height:100vh;background:radial-gradient(circle at 75% 80%,#e2fbf4,#f7fcff 45%,#fff 70%)}#loginPage:target{display:block}body:has(#loginPage:target) #landingPage{display:none}.login-top{padding:28px 5%;display:flex;justify-content:space-between;align-items:center}.login-wrap{display:grid;place-items:center;padding:35px 20px 90px}.login-card{width:min(480px,94vw);background:#fff;border-radius:18px;padding:45px;box-shadow:0 15px 55px #16486816}.login-card h1{text-align:center;margin:0 0 7px}.login-card>p{text-align:center;color:var(--muted);margin:0 0 32px}.field{margin-bottom:20px}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:8px}.field input{width:100%;padding:14px;border:1px solid #cedbe5;border-radius:7px;font-size:14px;outline:none}.field input:focus{border-color:var(--teal);box-shadow:0 0 0 3px #00ae9117}.row{display:flex;justify-content:space-between;font-size:13px;margin:2px 0 25px}.login-card .btn{width:100%;font-size:15px}.admin{text-align:center;margin-top:25px;font-size:13px;color:var(--muted)}.admin a{color:var(--blue);font-weight:700}.back{color:var(--blue);font-weight:700;font-size:14px;cursor:pointer}
-@media(max-width:900px){.links{display:none}.hero-grid{grid-template-columns:1fr}.hero h1{font-size:43px}.visual{min-height:360px}.cards{grid-template-columns:repeat(2,1fr)}.steps{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.hero{padding-top:42px}.hero h1{font-size:36px}.hero p{font-size:16px}.trust{flex-direction:column;gap:10px}.cards,.steps{grid-template-columns:1fr}.cta,.foot{flex-direction:column;gap:20px;text-align:center}.bubble{width:88px;height:88px}.login-card{padding:30px 22px}}
-.login-error{display:none;margin:0 0 16px;padding:10px 12px;border-radius:7px;background:#fff1f0;color:#b42318;font-size:13px}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--text);background:#fff}
+a{text-decoration:none;color:inherit}
+.container{width:min(1180px,92%);margin:auto}
+
+header{
+height:74px;
+display:flex;
+align-items:center;
+border-bottom:1px solid #eef4f8;
+background:#fff;
+position:sticky;
+top:0;
+z-index:20
+}
+
+nav{
+display:flex;
+align-items:center;
+justify-content:space-between;
+width:100%
+}
+
+.brand{
+display:flex;
+align-items:center;
+gap:10px;
+font-weight:800;
+font-size:27px
+}
+
+.mark{
+width:44px;
+height:44px;
+border-radius:50%;
+display:grid;
+place-items:center;
+background:linear-gradient(135deg,#0873d1,#00c998);
+color:#fff;
+font-size:23px;
+box-shadow:inset 0 0 0 6px rgba(255,255,255,.22)
+}
+
+.brand .pool{color:var(--navy)}
+.brand .pay{color:var(--teal)}
+
+.brand-logo{
+display:block;
+width:154px;
+height:48px;
+object-fit:contain;
+object-position:left center
+}
+
+.phone-logo{
+display:block;
+width:142px;
+height:90px;
+object-fit:contain
+}
+
+.login-brand-logo{
+display:block;
+width:180px;
+height:112px;
+object-fit:contain;
+object-position:left center
+}
+
+.links{
+display:flex;
+gap:32px;
+font-size:14px;
+font-weight:600
+}
+
+.btn{
+border:0;
+border-radius:8px;
+padding:13px 25px;
+font-weight:700;
+cursor:pointer;
+font-size:14px
+}
+
+.btn-primary{
+background:linear-gradient(135deg,#0755a9,#063c83);
+color:#fff;
+box-shadow:0 5px 14px #0755a926
+}
+
+.btn-outline{
+background:#fff;
+border:1.5px solid var(--blue);
+color:var(--blue)
+}
+
+.hero{
+background:radial-gradient(circle at 78% 45%,#d8fff3 0,#e9fbff 25%,#f7fcff 57%,#fff 80%);
+padding:65px 0 58px
+}
+
+.hero-grid{
+display:grid;
+grid-template-columns:1.05fr .95fr;
+align-items:center;
+gap:50px
+}
+
+.eyebrow{
+letter-spacing:6px;
+font-size:12px;
+font-weight:800;
+margin-bottom:18px
+}
+
+.hero h1{
+font-size:54px;
+line-height:1.08;
+margin:0 0 22px;
+letter-spacing:-1.7px
+}
+
+.accent{color:var(--teal)}
+
+.hero p{
+font-size:18px;
+line-height:1.65;
+color:#49647e;
+max-width:620px
+}
+
+.actions{
+display:flex;
+gap:14px;
+margin:30px 0
+}
+
+.trust{
+display:flex;
+gap:28px;
+margin-top:30px;
+font-size:13px;
+color:#466078;
+font-weight:600
+}
+
+.trust span:before{
+content:"✓";
+color:var(--teal);
+font-weight:900;
+margin-right:7px
+}
+
+.visual{
+min-height:390px;
+position:relative;
+display:grid;
+place-items:center
+}
+
+.phone{
+width:190px;
+height:355px;
+border:9px solid #123d68;
+border-radius:30px;
+background:#fff;
+box-shadow:0 25px 45px #174a6e32;
+display:grid;
+place-items:center;
+transform:rotate(4deg);
+z-index:2
+}
+
+.phone .brand{
+display:block;
+text-align:center;
+font-size:24px
+}
+
+.phone .mark{
+margin:0 auto 9px
+}
+
+.bubble{
+position:absolute;
+width:105px;
+height:105px;
+border-radius:50%;
+background:#ffffffc9;
+border:1px solid #d8eef4;
+box-shadow:0 8px 22px #24526d13;
+display:grid;
+place-items:center;
+text-align:center;
+font-size:12px;
+font-weight:700;
+padding:12px
+}
+
+.bubble b{
+font-size:27px;
+color:var(--teal);
+display:block
+}
+
+.b1{left:4%;top:8%}
+.b2{right:2%;top:11%}
+.b3{left:1%;bottom:8%}
+.b4{right:0;bottom:7%}
+
+section{padding:70px 0}
+
+.section-title{
+text-align:center;
+margin-bottom:38px
+}
+
+.section-title h2{
+font-size:30px;
+margin:0 0 8px
+}
+
+.section-title p{
+color:var(--muted);
+margin:0
+}
+
+.cards{
+display:grid;
+grid-template-columns:repeat(5,1fr);
+gap:16px
+}
+
+.card{
+border-radius:13px;
+padding:27px 18px;
+text-align:center;
+min-height:185px;
+border:1px solid #e7f0f3
+}
+
+.card:nth-child(1){background:#edf8ff}
+.card:nth-child(2){background:#eafbf5}
+.card:nth-child(3){background:#f5efff}
+.card:nth-child(4){background:#fff5ec}
+.card:nth-child(5){background:#f0f2ff}
+
+.ico{
+font-size:29px;
+margin-bottom:15px
+}
+
+.card h3{
+font-size:15px;
+margin:0 0 10px
+}
+
+.card p{
+font-size:13px;
+line-height:1.5;
+color:#617185;
+margin:0
+}
+
+.steps{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:25px;
+text-align:center
+}
+
+.step-circle{
+width:65px;
+height:65px;
+border-radius:50%;
+display:grid;
+place-items:center;
+margin:0 auto 15px;
+background:#edf7ff;
+font-size:27px
+}
+
+.step h3{font-size:15px}
+
+.step p{
+font-size:13px;
+color:var(--muted);
+line-height:1.5
+}
+
+.cta{
+background:linear-gradient(90deg,#e6fbf5,#e8f9ff);
+border-radius:14px;
+padding:25px 30px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-top:55px
+}
+
+.cta h3{margin:0 0 5px}
+
+.cta p{
+margin:0;
+color:var(--muted);
+font-size:14px
+}
+
+footer{
+background:#063568;
+color:#fff;
+padding:32px 0
+}
+
+.foot{
+display:flex;
+justify-content:space-between;
+align-items:center
+}
+
+.foot .brand .pool,
+.foot .brand .pay{
+color:#fff
+}
+
+.foot small{opacity:.75}
+
+#loginPage{
+display:none;
+min-height:100vh;
+background:radial-gradient(circle at 75% 80%,#e2fbf4,#f7fcff 45%,#fff 70%)
+}
+
+#loginPage:target{display:block}
+
+body:has(#loginPage:target) #landingPage{display:none}
+
+.login-top{
+padding:28px 5%;
+display:flex;
+justify-content:space-between;
+align-items:center
+}
+
+.login-wrap{
+display:grid;
+place-items:center;
+padding:35px 20px 90px
+}
+
+.login-card{
+width:min(480px,94vw);
+background:#fff;
+border-radius:18px;
+padding:45px;
+box-shadow:0 15px 55px #16486816
+}
+
+.login-card h1{
+text-align:center;
+margin:0 0 7px
+}
+
+.login-card>p{
+text-align:center;
+color:var(--muted);
+margin:0 0 32px
+}
+
+.field{margin-bottom:20px}
+
+.field label{
+display:block;
+font-size:13px;
+font-weight:700;
+margin-bottom:8px
+}
+
+.field input{
+width:100%;
+padding:14px;
+border:1px solid #cedbe5;
+border-radius:7px;
+font-size:14px;
+outline:none
+}
+
+.field input:focus{
+border-color:var(--teal);
+box-shadow:0 0 0 3px #00ae9117
+}
+
+.row{
+display:flex;
+justify-content:space-between;
+font-size:13px;
+margin:2px 0 25px
+}
+
+.login-card .btn{
+width:100%;
+font-size:15px
+}
+
+.admin{
+text-align:center;
+margin-top:25px;
+font-size:13px;
+color:var(--muted)
+}
+
+.admin a{
+color:var(--blue);
+font-weight:700
+}
+
+.back{
+color:var(--blue);
+font-weight:700;
+font-size:14px;
+cursor:pointer
+}
+
+.login-error{
+display:none;
+margin:0 0 16px;
+padding:10px 12px;
+border-radius:7px;
+background:#fff1f0;
+color:#b42318;
+font-size:13px
+}
+
+.login-success{
+display:none;
+margin:0 0 16px;
+padding:10px 12px;
+border-radius:7px;
+background:#e9fbf7;
+color:#087a68;
+font-size:13px
+}
+
+@media(max-width:900px){
+.links{display:none}
+.hero-grid{grid-template-columns:1fr}
+.hero h1{font-size:43px}
+.visual{min-height:360px}
+.cards{grid-template-columns:repeat(2,1fr)}
+.steps{grid-template-columns:repeat(2,1fr)}
+}
+
+@media(max-width:560px){
+.hero{padding-top:42px}
+.hero h1{font-size:36px}
+.hero p{font-size:16px}
+.trust{flex-direction:column;gap:10px}
+.cards,.steps{grid-template-columns:1fr}
+.cta,.foot{
+flex-direction:column;
+gap:20px;
+text-align:center
+}
+.bubble{
+width:88px;
+height:88px
+}
+.login-card{
+padding:30px 22px
+}
+}
 </style>
+
 </head>
+
 <body>
+
 <div id="landingPage">
-<header><div class="container"><nav>
-<a class="brand" href="#"><img class="brand-logo" src="logo.jpg" alt="PoolPay"></a>
-<div class="links"><a href="#home">Home</a><a href="#features">Features</a><a href="#how">How It Works</a><a href="#benefits">Benefits</a><a href="#about">About</a></div>
+
+<header>
+<div class="container">
+<nav>
+
+<a class="brand" href="#">
+<img class="brand-logo" src="logo.jpg" alt="PoolPay">
+</a>
+
+<div class="links">
+<a href="#home">Home</a>
+<a href="#features">Features</a>
+<a href="#how">How It Works</a>
+<a href="#benefits">Benefits</a>
+<a href="#about">About</a>
+</div>
+
 <a class="btn btn-primary login-trigger" href="#loginPage">Login</a>
-</nav></div></header>
 
-<main id="home" class="hero"><div class="container hero-grid">
-<div><div class="eyebrow">CHIT FUND SIMPLIFIED</div>
-<h1>Easily Manage<br>Your Chit Funds<br>with <span class="accent">PoolPay</span></h1>
-<p>A simple, secure and smart way to manage your chit groups, collections, auctions and payouts — all in one place.</p>
-<div class="actions"><a class="btn btn-primary" href="#features">Get Started</a><a class="btn btn-outline login-trigger" href="#loginPage">Login</a></div>
-<div class="trust"><span>Secure & Reliable</span><span>Easy to Use</span><span>Built for Groups</span></div>
+</nav>
 </div>
+</header>
+
+<main id="home" class="hero">
+
+<div class="container hero-grid">
+
+<div>
+
+<div class="eyebrow">CHIT FUND SIMPLIFIED</div>
+
+<h1>
+Easily Manage<br>
+Your Chit Funds<br>
+with <span class="accent">PoolPay</span>
+</h1>
+
+<p>
+A simple, secure and smart way to manage your chit groups,
+collections, auctions and payouts — all in one place.
+</p>
+
+<div class="actions">
+<a class="btn btn-primary" href="#features">Get Started</a>
+<a class="btn btn-outline login-trigger" href="#loginPage">Login</a>
+</div>
+
+<div class="trust">
+<span>Secure & Reliable</span>
+<span>Easy to Use</span>
+<span>Built for Groups</span>
+</div>
+
+</div>
+
 <div class="visual">
-<div class="bubble b1"><div><b>👥</b>Create<br>Groups</div></div>
-<div class="bubble b2"><div><b>🔔</b>Send<br>Reminders</div></div>
-<div class="bubble b3"><div><b>🔨</b>Manage<br>Auctions</div></div>
-<div class="bubble b4"><div><b>₹</b>Track<br>Payments</div></div>
-<div class="phone"><div class="brand"><img class="phone-logo" src="logo.jpg" alt="PoolPay"><small style="display:block;color:#728397;font-size:10px;margin-top:8px">Save Together<br>Grow Together</small></div></div>
-</div>
-</div></main>
 
-<section id="features"><div class="container">
-<div class="section-title"><h2>Everything You Need to Manage Your Chit Funds</h2><p>Powerful features to make your chit fund journey simple, transparent and hassle-free.</p></div>
+<div class="bubble b1">
+<div><b>👥</b>Create<br>Groups</div>
+</div>
+
+<div class="bubble b2">
+<div><b>🔔</b>Send<br>Reminders</div>
+</div>
+
+<div class="bubble b3">
+<div><b>🔨</b>Manage<br>Auctions</div>
+</div>
+
+<div class="bubble b4">
+<div><b>₹</b>Track<br>Payments</div>
+</div>
+
+<div class="phone">
+
+<div class="brand">
+
+<img
+class="phone-logo"
+src="logo.jpg"
+alt="PoolPay">
+
+<small style="display:block;color:#728397;font-size:10px;margin-top:8px">
+Save Together<br>
+Grow Together
+</small>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</main>
+
+<section id="features">
+
+<div class="container">
+
+<div class="section-title">
+
+<h2>
+Everything You Need to Manage Your Chit Funds
+</h2>
+
+<p>
+Powerful features to make your chit fund journey simple,
+transparent and hassle-free.
+</p>
+
+</div>
+
 <div class="cards">
-<div class="card"><div class="ico">👥</div><h3>Create & Manage Groups</h3><p>Create chit groups, add members, define contributions and manage schedules.</p></div>
-<div class="card"><div class="ico">📅</div><h3>Track Payments</h3><p>Record monthly collections and monitor paid, pending and overdue amounts.</p></div>
-<div class="card"><div class="ico">🔨</div><h3>Conduct Auctions</h3><p>Manage bidding, auction results and winners in one organized place.</p></div>
-<div class="card"><div class="ico">🔔</div><h3>Send Reminders</h3><p>Keep members informed with payment-due and collection reminders.</p></div>
-<div class="card"><div class="ico">📊</div><h3>Reports & Insights</h3><p>View group collections, outstanding dues, payouts and activity at a glance.</p></div>
-</div>
-</div></section>
 
-<section id="how" style="padding-top:10px"><div class="container">
-<div class="section-title"><h2>How It Works</h2><p>Get started in just a few simple steps.</p></div>
+<div class="card">
+<div class="ico">👥</div>
+<h3>Create & Manage Groups</h3>
+<p>
+Create chit groups, add members, define contributions and manage schedules.
+</p>
+</div>
+
+<div class="card">
+<div class="ico">📅</div>
+<h3>Track Payments</h3>
+<p>
+Record monthly collections and monitor paid, pending and overdue amounts.
+</p>
+</div>
+
+<div class="card">
+<div class="ico">🔨</div>
+<h3>Conduct Auctions</h3>
+<p>
+Manage bidding, auction results and winners in one organized place.
+</p>
+</div>
+
+<div class="card">
+<div class="ico">🔔</div>
+<h3>Send Reminders</h3>
+<p>
+Keep members informed with payment-due and collection reminders.
+</p>
+</div>
+
+<div class="card">
+<div class="ico">📊</div>
+<h3>Reports & Insights</h3>
+<p>
+View group collections, outstanding dues, payouts and activity at a glance.
+</p>
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+<section id="how" style="padding-top:10px">
+
+<div class="container">
+
+<div class="section-title">
+
+<h2>How It Works</h2>
+
+<p>Get started in just a few simple steps.</p>
+
+</div>
+
 <div class="steps">
-<div class="step"><div class="step-circle">👥</div><h3>1. Create Group</h3><p>Set up your chit group with members, contribution amount and rules.</p></div>
-<div class="step"><div class="step-circle">₹</div><h3>2. Collect Payments</h3><p>Record and track monthly member payments with clear due status.</p></div>
-<div class="step"><div class="step-circle">🔨</div><h3>3. Conduct Auction</h3><p>Manage bids and record the winning member and payout.</p></div>
-<div class="step"><div class="step-circle">📊</div><h3>4. Stay Updated</h3><p>Review reports, pending dues and group activity from your dashboard.</p></div>
-</div>
-<div class="cta"><div><h3>Ready to Simplify Your Chit Fund Management?</h3><p>Use PoolPay to manage your groups in one convenient place.</p></div><a class="btn btn-primary login-trigger" href="#loginPage">Login Now →</a></div>
-</div></section>
 
-<footer id="about"><div class="container foot"><div class="brand"><img class="brand-logo" src="logo.jpg" alt="PoolPay"></div><small>© 2026 PoolPay. All rights reserved.</small><small>Simple People. Stronger Together.</small></div></footer>
+<div class="step">
+<div class="step-circle">👥</div>
+<h3>1. Create Group</h3>
+<p>
+Set up your chit group with members, contribution amount and rules.
+</p>
 </div>
+
+<div class="step">
+<div class="step-circle">₹</div>
+<h3>2. Collect Payments</h3>
+<p>
+Record and track monthly member payments with clear due status.
+</p>
+</div>
+
+<div class="step">
+<div class="step-circle">🔨</div>
+<h3>3. Conduct Auction</h3>
+<p>
+Manage bids and record the winning member and payout.
+</p>
+</div>
+
+<div class="step">
+<div class="step-circle">📊</div>
+<h3>4. Stay Updated</h3>
+<p>
+Review reports, pending dues and group activity from your dashboard.
+</p>
+</div>
+
+</div>
+
+<div class="cta">
+
+<div>
+<h3>Ready to Simplify Your Chit Fund Management?</h3>
+<p>
+Use PoolPay to manage your groups in one convenient place.
+</p>
+</div>
+
+<a class="btn btn-primary login-trigger" href="#loginPage">
+Login Now →
+</a>
+
+</div>
+
+</div>
+
+</section>
+
+<footer id="about">
+
+<div class="container foot">
+
+<div class="brand">
+<img class="brand-logo" src="logo.jpg" alt="PoolPay">
+</div>
+
+<small>© 2026 PoolPay. All rights reserved.</small>
+
+<small>Simple People. Stronger Together.</small>
+
+</div>
+
+</footer>
+
+</div>
+
+<!-- LOGIN PAGE -->
 
 <div id="loginPage">
-<div class="login-top"><a class="brand" href="#" id="logoBack"><img class="login-brand-logo" src="main logo.jpeg" alt="PoolPay — Chit Fund Simplified"></a><span class="back" id="backHome">← Back to Home</span></div>
-<div class="login-wrap"><form class="login-card" id="landingLoginForm">
-<h1>Welcome Back</h1><p>Login to your PoolPay account</p>
-<p class="login-error" id="loginError" role="alert"></p>
-<div class="field"><label>Email Address</label><input id="landingEmail" type="email" placeholder="Enter your email" required></div>
-<div class="field"><label>Password</label><input id="landingPassword" type="password" placeholder="Enter your password" required></div>
-<div class="row"><label><input type="checkbox"> Remember me</label><a href="#" style="color:#0756ad;font-weight:700">Forgot password?</a></div>
-<button class="btn btn-primary" type="submit">Login</button>
-<div class="admin">Don't have an account?<br><br><a href="#">Contact your administrator</a></div>
-</form></div>
+
+<div class="login-top">
+
+<a class="brand" href="#" id="logoBack">
+<img
+class="login-brand-logo"
+src="main logo.jpeg"
+alt="PoolPay — Chit Fund Simplified">
+</a>
+
+<span class="back" id="backHome">
+← Back to Home
+</span>
+
 </div>
 
+<div class="login-wrap">
+
+<form class="login-card" id="landingLoginForm">
+
+<h1>Welcome Back</h1>
+
+<p>Login to your PoolPay account</p>
+
+<p class="login-error" id="loginError" role="alert"></p>
+
+<p class="login-success" id="loginSuccess"></p>
+
+<div class="field">
+
+<label>Email Address</label>
+
+<input
+id="landingEmail"
+type="email"
+placeholder="Enter your email"
+required>
+
+</div>
+
+<div class="field">
+
+<label>Password</label>
+
+<input
+id="landingPassword"
+type="password"
+placeholder="Enter your password"
+required>
+
+</div>
+
+<div class="row">
+
+<label>
+<input type="checkbox">
+Remember me
+</label>
+
+<a
+href="#"
+id="forgotPassword"
+style="color:#0756ad;font-weight:700">
+Forgot password? </a>
+
+</div>
+
+<button
+class="btn btn-primary"
+type="submit"
+id="loginButton">
+
+Login
+
+</button>
+
+<div class="admin">
+
+Don't have an account?
+
+<br><br>
+
+<a href="#">
+Contact your administrator
+</a>
+
+</div>
+
+</form>
+
+</div>
+
+</div>
+
+<!-- SUPABASE -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
-const landing=document.getElementById('landingPage'), login=document.getElementById('loginPage');
-function showLogin(){landing.style.display='none';login.style.display='block';window.scrollTo(0,0)}
-function showHome(e){if(e)e.preventDefault();login.style.display='none';landing.style.display='block';history.replaceState(null,'',new URL('./',window.location.href).pathname);window.scrollTo(0,0)}
-document.querySelectorAll('.login-trigger').forEach(b=>b.addEventListener('click',showLogin));
-document.getElementById('backHome').addEventListener('click',showHome);
-document.getElementById('logoBack').addEventListener('click',showHome);
-if(new URLSearchParams(window.location.search).get('login')==='1')showLogin();
-document.getElementById('landingLoginForm').addEventListener('submit',event=>{
-event.preventDefault();
-const email=document.getElementById('landingEmail').value.trim().toLowerCase();
-const password=document.getElementById('landingPassword').value;
-const error=document.getElementById('loginError');
-let savedData={};
-try{savedData=JSON.parse(localStorage.getItem('poolpe_v2_3_data')||'{}')}catch{}
-const users=savedData.users||[
-{id:'u1',email:'manager@demo.com',password:'demo123'},
-{id:'u2',email:'nowshath@demo.com',password:'demo123'}
-];
-const account=users.find(user=>user.email.toLowerCase()===email&&user.password===password);
-if(!account){error.textContent='Invalid email or password. Use one of the demo accounts.';error.style.display='block';return}
-localStorage.setItem('poolpe_v2_3_session',JSON.stringify({userId:account.id}));
-window.location.assign(new URL('dashboard.html',window.location.href).href);
+
+/* =========================================================
+   SUPABASE CONFIGURATION
+   =========================================================
+
+   Replace these two values with your Supabase project details.
+
+   Supabase Dashboard
+   → Project Settings
+   → API
+
+   Use the PUBLISHABLE KEY / ANON KEY.
+
+   NEVER use the service_role/secret key here.
+========================================================= */
+
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+
+const SUPABASE_PUBLISHABLE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
+
+
+const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+);
+
+
+/* =========================================================
+   PAGE NAVIGATION
+========================================================= */
+
+const landing = document.getElementById('landingPage');
+const login = document.getElementById('loginPage');
+
+
+function showLogin(){
+
+    landing.style.display = 'none';
+
+    login.style.display = 'block';
+
+    window.scrollTo(0,0);
+}
+
+
+function showHome(e){
+
+    if(e) e.preventDefault();
+
+    login.style.display = 'none';
+
+    landing.style.display = 'block';
+
+    history.replaceState(
+        null,
+        '',
+        new URL('./',window.location.href).pathname
+    );
+
+    window.scrollTo(0,0);
+}
+
+
+document.querySelectorAll('.login-trigger')
+.forEach(button => {
+
+    button.addEventListener('click', showLogin);
+
 });
+
+
+document.getElementById('backHome')
+.addEventListener('click', showHome);
+
+
+document.getElementById('logoBack')
+.addEventListener('click', showHome);
+
+
+if(new URLSearchParams(window.location.search).get('login') === '1'){
+
+    showLogin();
+
+}
+
+
+/* =========================================================
+   SUPABASE LOGIN
+========================================================= */
+
+document.getElementById('landingLoginForm')
+.addEventListener('submit', async function(event){
+
+    event.preventDefault();
+
+
+    const email =
+        document.getElementById('landingEmail')
+        .value
+        .trim()
+        .toLowerCase();
+
+
+    const password =
+        document.getElementById('landingPassword')
+        .value;
+
+
+    const error =
+        document.getElementById('loginError');
+
+
+    const success =
+        document.getElementById('loginSuccess');
+
+
+    const loginButton =
+        document.getElementById('loginButton');
+
+
+    /* Clear previous messages */
+
+    error.style.display = 'none';
+
+    success.style.display = 'none';
+
+
+    /* Disable button while logging in */
+
+    loginButton.disabled = true;
+
+    loginButton.textContent = 'Logging in...';
+
+
+    try{
+
+        const { data, error: loginError } =
+            await supabaseClient.auth.signInWithPassword({
+
+                email: email,
+
+                password: password
+
+            });
+
+
+        if(loginError){
+
+            throw loginError;
+
+        }
+
+
+        if(!data.user){
+
+            throw new Error('Login failed. Please try again.');
+
+        }
+
+
+        console.log('Logged in user:', data.user);
+
+
+        success.textContent =
+            'Login successful. Opening your dashboard...';
+
+        success.style.display = 'block';
+
+
+        /*
+           Supabase automatically maintains the session
+           in the browser.
+        */
+
+
+        setTimeout(() => {
+
+            window.location.assign(
+                new URL(
+                    'dashboard.html',
+                    window.location.href
+                ).href
+            );
+
+        }, 500);
+
+
+    }
+    catch(err){
+
+        console.error('Login error:', err);
+
+
+        error.textContent =
+            err.message ||
+            'Invalid email or password.';
+
+
+        error.style.display = 'block';
+
+
+        loginButton.disabled = false;
+
+        loginButton.textContent = 'Login';
+
+    }
+
+});
+
+
+/* =========================================================
+   FORGOT PASSWORD
+========================================================= */
+
+document.getElementById('forgotPassword')
+.addEventListener('click', async function(event){
+
+    event.preventDefault();
+
+
+    const email =
+        document.getElementById('landingEmail')
+        .value
+        .trim()
+        .toLowerCase();
+
+
+    const error =
+        document.getElementById('loginError');
+
+
+    const success =
+        document.getElementById('loginSuccess');
+
+
+    if(!email){
+
+        error.textContent =
+            'Please enter your email address first.';
+
+        error.style.display = 'block';
+
+        return;
+
+    }
+
+
+    const { error: resetError } =
+        await supabaseClient.auth.resetPasswordForEmail(
+            email,
+            {
+                redirectTo:
+                    window.location.origin + '/reset-password.html'
+            }
+        );
+
+
+    if(resetError){
+
+        error.textContent = resetError.message;
+
+        error.style.display = 'block';
+
+        return;
+
+    }
+
+
+    success.textContent =
+        'Password reset instructions have been sent to your email.';
+
+    success.style.display = 'block';
+
+});
+
+
+/* =========================================================
+   CHECK EXISTING SESSION
+========================================================= */
+
+async function checkExistingSession(){
+
+    const {
+        data: { session }
+    } = await supabaseClient.auth.getSession();
+
+
+    if(session){
+
+        console.log(
+            'Existing PoolPay session:',
+            session.user.email
+        );
+
+        /*
+           Later we can automatically redirect
+           authenticated users to dashboard.html.
+        */
+
+    }
+
+}
+
+
+checkExistingSession();
+
 </script>
-</body></html>
+
+</body>
+</html>
