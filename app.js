@@ -1,4 +1,4 @@
-```javascript
+
 /* =========================================================
    PoolPay - Supabase powered application
    ========================================================= */
@@ -3302,4 +3302,4 @@ supabaseClient.auth.onAuthStateChange(
     }
   }
 );
-```
+
