@@ -51,34 +51,39 @@ let month = "2026-09";
    INITIALIZATION
    ========================================================= */
 
-document.addEventListener(
-  "DOMContentLoaded",
-  init
-);
-
+document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
 
+  console.log("=== POOLPAY DASHBOARD START ===");
+
   try {
 
-    console.log(
-      "Starting PoolPay dashboard..."
-    );
-
-
+    // STEP 1 - Check authentication
     const {
-      data: { session: existingSession },
-      error
-    } =
-      await supabaseClient.auth
-        .getSession();
+      data,
+      error: sessionError
+    } = await supabaseClient.auth.getSession();
 
+    console.log("STEP 1 - Session result:", data);
 
-    if (error) {
+    if (sessionError) {
+      console.error(
+        "STEP 1 FAILED - Session error:",
+        sessionError
+      );
+
+      showDashboardError(
+        "Unable to verify login session."
+      );
+
+      return;
+    }
+
+    if (!data.session) {
 
       console.error(
-        "Supabase session error:",
-        error
+        "STEP 1 FAILED - No Supabase session"
       );
 
       redirectToLogin();
@@ -86,111 +91,113 @@ async function init() {
       return;
     }
 
-
-    /*
-      Dashboard requires authentication.
-    */
-
-    if (!existingSession) {
-
-      console.log(
-        "No Supabase session found."
-      );
-
-      redirectToLogin();
-
-      return;
-    }
-
-
-    session =
-      existingSession;
-
+    session = data.session;
 
     console.log(
-      "Authenticated as:",
-      session.user.email
+      "STEP 1 PASSED - Logged in:",
+      session.user.email,
+      session.user.id
     );
 
 
-    /*
-      Load profile, groups, members,
-      payments and auctions.
-    */
+    // STEP 2 - Load database data
+    console.log(
+      "STEP 2 - Loading PoolPay data..."
+    );
 
     await loadUserData();
 
+    console.log(
+      "STEP 2 PASSED - Database loaded"
+    );
 
-    const user =
-      currentUser();
+    console.log(
+      "Profiles:",
+      db.users
+    );
+
+    console.log(
+      "Groups:",
+      db.groups
+    );
+
+    console.log(
+      "Members:",
+      db.members
+    );
 
 
-    /*
-      Supabase Auth user exists but
-      there is no matching profiles row.
-    */
+    // STEP 3 - Find PoolPay profile
+    const user = currentUser();
+
+    console.log(
+      "STEP 3 - Current PoolPay user:",
+      user
+    );
+
 
     if (!user) {
 
       console.error(
-        "No PoolPay profile found for:",
-        session.user.id
+        "STEP 3 FAILED - No matching profile found"
       );
 
-
-      await supabaseClient.auth
-        .signOut();
-
-
-      redirectToLogin();
+      showDashboardError(
+        "Your login succeeded, but your PoolPay profile could not be loaded. Check the browser console for details."
+      );
 
       return;
     }
 
 
-    /*
-      Determine initial group.
-    */
-
+    // STEP 4 - Determine initial group
     activeGroup =
       db.groups.find(
         g =>
-          g.managerId ===
-          user.id
+          g.managerId === user.id
       )?.id ||
 
       db.members.find(
         m =>
-          m.userId ===
-          user.id
+          m.userId === user.id
       )?.groupId ||
 
       null;
 
 
-    /*
-      Display appropriate dashboard.
-    */
+    console.log(
+      "STEP 4 - Active group:",
+      activeGroup
+    );
+
+
+    // STEP 5 - Render
+    console.log(
+      "STEP 5 - Rendering dashboard"
+    );
 
     render();
+
+    console.log(
+      "=== POOLPAY DASHBOARD READY ==="
+    );
 
   }
 
   catch (error) {
 
     console.error(
-      "PoolPay initialization error:",
+      "POOLPAY INITIALIZATION FAILED:",
       error
     );
 
-
-    redirectToLogin();
+    showDashboardError(
+      "PoolPay login succeeded, but the dashboard could not load. Open the browser console to see the exact error."
+    );
 
   }
 
 }
-
-
 /* =========================================================
    LOGIN REDIRECTION
    ========================================================= */
