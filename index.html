@@ -1060,35 +1060,8 @@ footer{
 <!-- ========================================= -->
 <!-- SUPABASE + LANDING PAGE SCRIPT -->
 <!-- ========================================= -->
-
+<script src="supabase-config.js"></script>
 <script>
-
-/*
- * ============================================
- * SUPABASE CONFIGURATION
- * ============================================
- *
- * Supabase Dashboard
- * → Project Settings
- * → API
- *
- * Use the Publishable/Anon key only.
- *
- * NEVER put the service_role/secret key here.
- */
-
-const SUPABASE_URL =
-  "YOUR_SUPABASE_PROJECT_URL";
-
-const SUPABASE_PUBLISHABLE_KEY =
-  "YOUR_SUPABASE_PUBLISHABLE_KEY";
-
-
-const supabaseClient =
-  window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_PUBLISHABLE_KEY
-  );
 
 
 /*
