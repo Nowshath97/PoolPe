@@ -51,114 +51,221 @@ let month = "2026-09";
    INITIALIZATION
    ========================================================= */
 
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener(
+  "DOMContentLoaded",
+  init
+);
+
 
 async function init() {
+
   try {
-    const { data, error } = await supabaseClient.auth.getSession();
+
+    console.log(
+      "Starting PoolPay dashboard..."
+    );
+
+
+    const {
+      data: { session: existingSession },
+      error
+    } =
+      await supabaseClient.auth
+        .getSession();
+
 
     if (error) {
-      console.error("Supabase session error:", error);
-      renderLoginError("Unable to check your login session.");
+
+      console.error(
+        "Supabase session error:",
+        error
+      );
+
+      redirectToLogin();
+
       return;
     }
 
-    session = data.session;
 
-    if (!session) {
-      renderLoginView();
+    /*
+      Dashboard requires authentication.
+    */
+
+    if (!existingSession) {
+
+      console.log(
+        "No Supabase session found."
+      );
+
+      redirectToLogin();
+
       return;
     }
+
+
+    session =
+      existingSession;
+
+
+    console.log(
+      "Authenticated as:",
+      session.user.email
+    );
+
+
+    /*
+      Load profile, groups, members,
+      payments and auctions.
+    */
 
     await loadUserData();
 
-    if (!currentUser()) {
-      await logout(false);
+
+    const user =
+      currentUser();
+
+
+    /*
+      Supabase Auth user exists but
+      there is no matching profiles row.
+    */
+
+    if (!user) {
+
+      console.error(
+        "No PoolPay profile found for:",
+        session.user.id
+      );
+
+
+      await supabaseClient.auth
+        .signOut();
+
+
+      redirectToLogin();
+
       return;
     }
 
-    render();
-  } catch (err) {
-    console.error("Initialization error:", err);
-    renderLoginError("Unable to load PoolPay.");
-  }
-}
 
-/* =========================================================
-   AUTHENTICATION
-   ========================================================= */
-
-async function login() {
-  const emailInput = document.getElementById("email");
-  const passwordInput = document.getElementById("password");
-
-  if (!emailInput || !passwordInput) return;
-
-  const email = emailInput.value.trim().toLowerCase();
-  const password = passwordInput.value;
-
-  if (!email || !password) {
-    toast("Enter email and password");
-    return;
-  }
-
-  try {
-    const { data, error } =
-      await supabaseClient.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-    if (error) {
-      console.error(error);
-      toast(error.message || "Invalid email or password");
-      return;
-    }
-
-    session = data.session;
-
-    await loadUserData();
-
-    const u = currentUser();
-
-    if (!u) {
-      toast("Profile not found. Contact your administrator.");
-      await supabaseClient.auth.signOut();
-      session = null;
-      return;
-    }
+    /*
+      Determine initial group.
+    */
 
     activeGroup =
-      db.groups.find((g) => g.managerId === u.id)?.id ||
-      db.members.find((m) => m.userId === u.id)?.groupId ||
+      db.groups.find(
+        g =>
+          g.managerId ===
+          user.id
+      )?.id ||
+
+      db.members.find(
+        m =>
+          m.userId ===
+          user.id
+      )?.groupId ||
+
       null;
 
+
+    /*
+      Display appropriate dashboard.
+    */
+
     render();
-  } catch (err) {
-    console.error("Login error:", err);
-    toast("Unable to login");
+
   }
+
+  catch (error) {
+
+    console.error(
+      "PoolPay initialization error:",
+      error
+    );
+
+
+    redirectToLogin();
+
+  }
+
 }
 
-async function logout(redirect = true) {
+
+/* =========================================================
+   LOGIN REDIRECTION
+   ========================================================= */
+
+function redirectToLogin() {
+
+  window.location.replace(
+    new URL(
+      "index.html?login=1",
+      window.location.href
+    ).href
+  );
+
+}
+
+
+/* =========================================================
+   LOGOUT
+   ========================================================= */
+
+async function logout() {
+
   try {
-    await supabaseClient.auth.signOut();
-  } catch (err) {
-    console.error("Logout error:", err);
+
+    const {
+      error
+    } =
+      await supabaseClient.auth
+        .signOut();
+
+
+    if (error) {
+
+      console.error(
+        "Supabase logout error:",
+        error
+      );
+
+    }
+
   }
+
+  catch (error) {
+
+    console.error(
+      "Logout error:",
+      error
+    );
+
+  }
+
 
   session = null;
 
-  if (redirect) {
-    window.location.href =
-      new URL("index.html#loginPage", window.location.href).href;
-  }
+
+  /*
+    Remove old PoolPay login value
+    if it exists from previous versions.
+  */
+
+  localStorage.removeItem(
+    "poolpe_supabase_user"
+  );
+
+
+  redirectToLogin();
+
 }
+
 
 function currentAuthUser() {
-  return session?.user || null;
-}
 
+  return session?.user || null;
+
+}
 /* =========================================================
    LOAD DATA FROM SUPABASE
    ========================================================= */
@@ -414,60 +521,35 @@ function currentUser() {
    ========================================================= */
 
 function render() {
-  const u = currentUser();
+
+  const u =
+    currentUser();
+
 
   if (!session || !u) {
-    renderLoginView();
+
+    redirectToLogin();
+
     return;
   }
 
-  if (u.role === "manager") {
+
+  if (
+    String(u.role)
+      .toLowerCase() ===
+    "manager"
+  ) {
+
     managerView(u);
+
   } else {
+
     memberView(u);
+
   }
+
 }
 
-function renderLoginView() {
-  const app = document.getElementById("app");
-
-  if (!app) return;
-
-  app.innerHTML = `
-    <div class="login">
-      <div class="loginbox">
-        <div class="logo">PoolPe</div>
-
-        <h1>Welcome back</h1>
-
-        <p class="muted">
-          Sign in to manage or view your pool group.
-        </p>
-
-        <div class="demo">
-
-          <div class="field">
-            <label>Email</label>
-            <input id="email" type="email">
-          </div>
-
-          <div class="field">
-            <label>Password</label>
-            <input id="password" type="password">
-          </div>
-
-          <button
-            class="btn primary"
-            style="width:100%"
-            onclick="login()">
-            Sign in
-          </button>
-
-        </div>
-      </div>
-    </div>
-  `;
-}
 
 function renderLoginError(message) {
   console.error(message);
@@ -3242,57 +3324,40 @@ window.resetDemo =
    SUPABASE AUTH STATE LISTENER
    ========================================================= */
 
+/* =========================================================
+   SUPABASE AUTH STATE
+   ========================================================= */
+
 supabaseClient.auth.onAuthStateChange(
-  async (event, newSession) => {
-    /*
-      Do not reload everything immediately
-      during INITIAL_SESSION because init()
-      already handles it.
-    */
+  (event, newSession) => {
+
+    console.log(
+      "Supabase auth event:",
+      event
+    );
+
 
     if (
       event === "SIGNED_OUT"
     ) {
+
       session = null;
 
-      const app =
-        document.getElementById(
-          "app"
-        );
-
-      if (app) {
-        renderLoginView();
-      }
+      redirectToLogin();
 
       return;
     }
 
+
     if (
-      event === "SIGNED_IN" ||
       event === "TOKEN_REFRESHED"
     ) {
-      session = newSession;
 
-      /*
-        Avoid duplicate initialization
-        if already loaded.
-      */
+      session =
+        newSession;
 
-      if (
-        event === "SIGNED_IN" &&
-        currentUser()
-      ) {
-        return;
-      }
-
-      await loadUserData();
-
-      activeGroup =
-        db.groups[0]?.id ||
-        null;
-
-      render();
     }
+
   }
 );
 
