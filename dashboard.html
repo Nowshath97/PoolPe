@@ -1,3 +1,76 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#3157d5"><title>PoolPe V2.3.1</title><link rel="stylesheet" href="styles.css"></head><body><div id="app"></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
-  <script src="app.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="theme-color"
+    content="#3157d5"
+  >
+
+  <title>PoolPay | Dashboard</title>
+
+  <link
+    rel="icon"
+    type="image/png"
+    href="favicon.png"
+  >
+
+  <link
+    rel="stylesheet"
+    href="styles.css"
+  >
+
+</head>
+
+<body>
+
+  <!--
+    app.js renders either the Manager
+    or Member dashboard inside this element.
+  -->
+
+  <div id="app">
+
+    <div
+      style="
+        min-height:100vh;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-family:Arial,sans-serif;
+        color:#64748b;
+      "
+    >
+      Loading PoolPay...
+    </div>
+
+  </div>
+
+
+  <!-- Supabase JavaScript library -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+  </script>
+
+
+  <!-- Shared PoolPay Supabase configuration -->
+
+  <script src="supabase-config.js"></script>
+
+
+  <!-- PoolPay application -->
+
+  <script src="app.js"></script>
+
+</body>
+
+</html>
