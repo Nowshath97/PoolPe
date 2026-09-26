@@ -976,13 +976,14 @@ footer{
       <div class="field">
 
         <label>
-          Email Address
+          Email or phone number
         </label>
 
         <input
           id="landingEmail"
-          type="email"
-          placeholder="Enter your email"
+          type="text"
+          autocomplete="username"
+          placeholder="Email or +919876543210"
           required
         >
 
@@ -1037,8 +1038,8 @@ footer{
 
         <br><br>
 
-        <a href="#">
-          Contact your administrator
+        <a href="signup.html">
+          Create manager account
         </a>
 
       </div>
@@ -1260,7 +1261,7 @@ document
       if (!email || !password) {
 
         showError(
-          "Please enter your email and password."
+          "Please enter your email or phone number and password."
         );
 
         return;
@@ -1285,7 +1286,7 @@ document
         } =
           await supabaseClient.auth
             .signInWithPassword({
-              email,
+              ...(email.includes("@") ? { email } : { phone: email.replace(/[\s()-]/g, "") }),
               password
             });
 
