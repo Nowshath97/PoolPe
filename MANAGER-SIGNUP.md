@@ -1,10 +1,11 @@
-# Public manager signup
+# Public manager and member signup
 
 ## Enable in Supabase
 
 1. Run `supabase/manager-signup.sql` in the same project configured in
-   `supabase-config.js`. It creates manager profiles for new registrations
-   marked `signup_kind: manager`. Existing accounts are unchanged.
+   `supabase-config.js`. It creates profiles with the selected manager or member role for new
+   registrations marked `signup_kind: manager` or `signup_kind: member`.
+   Re-run this script if you installed the earlier manager-only version. Existing accounts are unchanged.
 2. In Authentication settings, allow new user signups. Enable the Email
    provider and email confirmation. Configure SMTP for public email delivery.
 3. To offer phone registration, enable the Phone provider, configure an SMS
@@ -16,7 +17,9 @@
    the existing dashboard and Supabase configuration.
 
 Passwords are managed only by Supabase Auth. Signup creates an Auth user and
-the database trigger creates their profile. Verification is enforced by the
+the database trigger creates their profile with the chosen role. Member
+registration does not automatically join a group; a manager must link their
+membership to the Auth user ID. Verification is enforced by the
 Auth provider before a session is issued. A manager can then log in using the
 email or phone number they registered with and their password.
 
@@ -27,7 +30,7 @@ unrestricted group policies to support signup.
 ## Verify on your project
 
 - Register a new email account, follow its confirmation link, and check that
-  the profile ID matches the Auth user ID and its role is `manager`.
+  the profile ID matches the Auth user ID and its role matches the selected account type.
 - Register a phone account, enter the SMS code, then log out and log in with
   the same phone number (including country code) and password.
 - Check incorrect passwords/codes are rejected, and a newly registered

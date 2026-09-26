@@ -10,15 +10,14 @@ security definer
 set search_path = ''
 as $$
 begin
-  -- Public manager registration is intentional. Never copy an arbitrary
-  -- role from client metadata; this path can only assign 'manager'.
-  if new.raw_user_meta_data ->> 'signup_kind' = 'manager' then
+  -- Public registration supports exactly these two roles.
+  if (new.raw_user_meta_data ->> 'signup_kind') in ('manager', 'member') then
     insert into public.profiles (id, name, email, role)
     values (
       new.id,
-      coalesce(nullif(trim(new.raw_user_meta_data ->> 'name'), ''), 'PoolPay Manager'),
+      coalesce(nullif(trim(new.raw_user_meta_data ->> 'name'), ''), 'PoolPay User'),
       new.email,
-      'manager'
+      new.raw_user_meta_data ->> 'signup_kind'
     )
     on conflict (id) do update set
       name = excluded.name,

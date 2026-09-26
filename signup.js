@@ -4,6 +4,32 @@ const method = document.getElementById('method');
 const identity = document.getElementById('identity');
 const message = document.getElementById('message');
 let pendingPhone = null;
+let signupRole = null;
+
+function chooseRole(role) {
+  if (!['manager', 'member'].includes(role)) return;
+  signupRole = role;
+  document.getElementById('roleChoices').hidden = true;
+  document.getElementById('changeRole').hidden = false;
+  signupForm.hidden = false;
+  document.getElementById('signupTitle').textContent = `Sign up as ${role}`;
+  document.getElementById('signupDescription').textContent = role === 'manager'
+    ? 'Create your account to manage pool groups and contributions.'
+    : 'Create your account, then ask your manager to link you to your group.';
+  message.textContent = '';
+  document.getElementById('name').focus();
+}
+document.getElementById('chooseManager').addEventListener('click', () => chooseRole('manager'));
+document.getElementById('chooseMember').addEventListener('click', () => chooseRole('member'));
+document.getElementById('changeRole').addEventListener('click', () => {
+  signupRole = null;
+  signupForm.hidden = true;
+  document.getElementById('roleChoices').hidden = false;
+  document.getElementById('changeRole').hidden = true;
+  document.getElementById('signupTitle').textContent = 'Create your account';
+  document.getElementById('signupDescription').textContent = 'Choose how you want to use PoolPay.';
+  message.textContent = '';
+});
 
 function openDashboard() {
   window.location.replace(new URL('dashboard.html', window.location.href).href);
@@ -20,6 +46,10 @@ method.addEventListener('change', () => {
 
 signupForm.addEventListener('submit', async event => {
   event.preventDefault();
+  if (!['manager', 'member'].includes(signupRole)) {
+    message.textContent = 'Choose manager or member first.';
+    return;
+  }
   const name = document.getElementById('name').value.trim();
   const password = document.getElementById('password').value;
   const confirmation = document.getElementById('confirmPassword').value;
@@ -35,12 +65,13 @@ signupForm.addEventListener('submit', async event => {
   }
   const button = signupForm.querySelector('button');
   button.disabled = true;
+  document.getElementById('changeRole').disabled = true;
   message.textContent = 'Creating your account…';
   try {
     const { data, error } = await supabaseClient.auth.signUp({
       ...(phone ? { phone: value } : { email: value }), password,
       options: {
-        data: { name, signup_kind: 'manager' },
+        data: { name, signup_kind: signupRole },
         emailRedirectTo: new URL('dashboard.html', window.location.href).href
       }
     });
@@ -49,6 +80,7 @@ signupForm.addEventListener('submit', async event => {
     document.getElementById('confirmPassword').value = '';
     if (data.session) return openDashboard();
     if (phone) {
+      document.getElementById('changeRole').hidden = true;
       pendingPhone = value;
       signupForm.hidden = true;
       verifyForm.hidden = false;
@@ -59,7 +91,10 @@ signupForm.addEventListener('submit', async event => {
     }
   } catch (error) {
     message.textContent = error.message || 'Unable to create account. Please try again.';
-  } finally { button.disabled = false; }
+  } finally {
+    button.disabled = false;
+    document.getElementById('changeRole').disabled = false;
+  }
 });
 
 verifyForm.addEventListener('submit', async event => {
