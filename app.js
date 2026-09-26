@@ -576,7 +576,8 @@ function mapPayment(p) {
   return {
     id: p.id,
     groupId: p.group_id,
-    month: p.month,
+    // Keep month keys consistent for dues calculations and payment lookup.
+    month: String(p.month).slice(0, 7),
     memberId: p.member_id,
     amountDue: Number(p.amount_due || 0),
     amountPaid: Number(p.amount_paid || 0),
@@ -1157,6 +1158,21 @@ function managerView(u) {
   );
 }
 
+function memberMatchesSearch(name, term) {
+  return String(name || '').toLowerCase().includes(String(term || '').trim().toLowerCase());
+}
+
+function filterMemberRows(term) {
+  window.searchTerm = term;
+  let matches = 0;
+  document.querySelectorAll('#managerMemberRows tr[data-member-name]').forEach(row => {
+    row.hidden = !memberMatchesSearch(row.dataset.memberName, term);
+    if (!row.hidden) matches++;
+  });
+  const empty = document.getElementById('noMemberMatches');
+  if (empty) empty.hidden = matches > 0;
+}
+
 function groupPanel(g) {
   const ms = db.members.filter(
     (m) => m.groupId === g.id
@@ -1212,16 +1228,6 @@ function groupPanel(g) {
     );
 
   const rows = ms
-    .filter((m) =>
-      m.name
-        .toLowerCase()
-        .includes(
-          (
-            window.searchTerm ||
-            ""
-          ).toLowerCase()
-        )
-    )
     .map((m) => {
       const p =
         ps.find(
@@ -1246,7 +1252,7 @@ function groupPanel(g) {
       );
 
       return `
-        <tr>
+        <tr data-member-name="${escapeHtml(m.name || '')}" ${memberMatchesSearch(m.name, window.searchTerm) ? '' : 'hidden'}>
 
           <td>
             <button
@@ -1459,11 +1465,11 @@ function groupPanel(g) {
         <div class="toolbar">
 
           <input
+            id="memberSearch"
+            aria-label="Search members by name"
             placeholder="Search members"
-            oninput="
-              window.searchTerm=this.value;
-              render()
-            "
+            value="${escapeHtml(window.searchTerm || '')}"
+            oninput="filterMemberRows(this.value)"
           >
 
           <button
@@ -1492,8 +1498,11 @@ function groupPanel(g) {
             </tr>
           </thead>
 
-          <tbody>
+          <tbody id="managerMemberRows">
             ${rows}
+            <tr id="noMemberMatches" ${ms.some(m => memberMatchesSearch(m.name, window.searchTerm)) ? 'hidden' : ''}>
+              <td colspan="7" role="status">No members found.</td>
+            </tr>
           </tbody>
 
         </table>
@@ -2368,7 +2377,11 @@ function modals() {
 
           <input
             id="payDate"
-            type="date">
+            type="date"
+            aria-describedby="payDateHelp">
+          <p id="payDateHelp" class="small muted">
+            Select the date the payment was received. Past dates are allowed.
+          </p>
         </div>
 
         <div class="field">
@@ -2877,7 +2890,7 @@ async function savePayment() {
       if (!p) {
         const payload = {
           group_id: g.id,
-          month: item.ym,
+          month: `${item.ym}-01`,
           member_id: mid,
           amount_due: item.due,
           amount_paid: 0,
