@@ -581,7 +581,9 @@ function mapPayment(p) {
     memberId: p.member_id,
     amountDue: Number(p.amount_due || 0),
     amountPaid: Number(p.amount_paid || 0),
-    status: p.status || "Pending",
+    status: ({ pending: "Pending", partial: "Partial", paid: "Paid" })[
+      String(p.status || "pending").toLowerCase()
+    ] || "Pending",
     date: p.date || "",
     mode: p.mode || "",
     reference: p.reference || "",
@@ -2894,7 +2896,7 @@ async function savePayment() {
           member_id: mid,
           amount_due: item.due,
           amount_paid: 0,
-          status: "Pending",
+          status: "pending",
           date: null,
           mode: null,
           reference: "",
@@ -2929,8 +2931,8 @@ async function savePayment() {
       const newStatus =
         newPaid >=
         Number(p.amountDue)
-          ? "Paid"
-          : "Pending";
+          ? "paid"
+          : "partial";
 
       const update = {
         amount_paid: newPaid,
@@ -3079,7 +3081,7 @@ async function markPending(mid) {
     }
 
     const update = {
-      status: "Pending",
+      status: "pending",
       amount_paid: 0,
       date: null,
       mode: null,
