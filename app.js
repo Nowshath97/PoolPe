@@ -2599,7 +2599,8 @@ async function createGroup() {
       Number(gv.value),
     payout_increment:
       Number(ginc.value) || 0,
-    start: month,
+    // Supabase stores start as a DATE; use the first day of the pool month.
+    start: `${month}-01`,
     status: "Active",
   };
 
