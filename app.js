@@ -219,6 +219,10 @@ function redirectToLogin() {
    LOGOUT
    ========================================================= */
 
+function redirectToHome() {
+  window.location.replace(new URL("index.html", window.location.href).href);
+}
+
 async function logout() {
 
   try {
@@ -264,7 +268,7 @@ async function logout() {
   );
 
 
-  redirectToLogin();
+  redirectToHome();
 
 }
 
@@ -3563,7 +3567,7 @@ if (
 
         session = null;
 
-        redirectToLogin();
+        redirectToHome();
 
         return;
 
