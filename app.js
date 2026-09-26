@@ -65,7 +65,7 @@ async function init() {
       error: sessionError
     } = await supabaseClient.auth.getSession();
 
-    console.log("STEP 1 - Session result:", data);
+
 
     if (sessionError) {
       console.error(
@@ -192,7 +192,8 @@ async function init() {
     );
 
     showDashboardError(
-      "PoolPay login succeeded, but the dashboard could not load. Open the browser console to see the exact error."
+      "PoolPay login succeeded, but the dashboard could not load. " +
+      (error.message || "Please try again.")
     );
 
   }
@@ -297,41 +298,16 @@ async function loadUserData() {
 
   try {
 
-    /*
-      =========================================================
-      LOAD PROFILE
-      =========================================================
-
-      IMPORTANT:
-
-      We use maybeSingle() instead of single().
-
-      single() throws PGRST116 / HTTP 406 when there are
-      zero rows in the profiles table.
-
-      maybeSingle() returns null when no profile exists.
-    */
-
-    const {
-      data: profile,
-      error: profileError
-    } = await supabaseClient
+    // RLS determines which profiles this account can read. Keep them for
+    // linking existing accounts when a manager adds a member.
+    const { data: profiles, error: profileError } = await supabaseClient
       .from("profiles")
-      .select("*")
-      .eq("id", authUser.id)
-      .maybeSingle();
-
+      .select("*");
 
     if (profileError) {
-
-      console.error(
-        "Profile query error:",
-        profileError
-      );
-
-      throw profileError;
+      throw new Error("Unable to load profiles: " + profileError.message);
     }
-
+    const profile = (profiles || []).find(p => p.id === authUser.id);
 
     /*
       =========================================================
@@ -349,7 +325,7 @@ async function loadUserData() {
 
     if (groupsError) {
 
-      throw groupsError;
+      throw new Error("Unable to load groups: " + groupsError.message);
 
     }
 
@@ -370,7 +346,7 @@ async function loadUserData() {
 
     if (membersError) {
 
-      throw membersError;
+      throw new Error("Unable to load members: " + membersError.message);
 
     }
 
@@ -391,7 +367,7 @@ async function loadUserData() {
 
     if (paymentsError) {
 
-      throw paymentsError;
+      throw new Error("Unable to load payments: " + paymentsError.message);
 
     }
 
@@ -412,7 +388,7 @@ async function loadUserData() {
 
     if (auctionsError) {
 
-      throw auctionsError;
+      throw new Error("Unable to load auctions: " + auctionsError.message);
 
     }
 
@@ -509,6 +485,8 @@ async function loadUserData() {
     const detectedRole =
       String(
 
+        (ownsGroup ? "manager" : null) ||
+
         profile?.role ||
 
         metadata.role ||
@@ -523,7 +501,7 @@ async function loadUserData() {
               : "member"
         )
 
-      ).toLowerCase();
+      ).trim().toLowerCase();
 
 
     /*
@@ -554,6 +532,7 @@ async function loadUserData() {
     db = {
 
       users: [
+        ...(profiles || []).filter(p => p.id !== authUser.id),
 
         {
 
@@ -731,7 +710,7 @@ function render() {
   console.log("CURRENT AUTH USER:", currentAuthUser());
   console.log("CURRENT APP USER:", u);
   console.log("CURRENT USER ROLE:", u?.role);
-  console.log("SESSION:", session);
+
   console.log("================================");
 
 
