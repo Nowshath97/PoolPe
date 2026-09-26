@@ -1245,7 +1245,7 @@ function groupPanel(g) {
             <button
               class="linkbtn"
               onclick="openHistory('${m.id}')">
-              <b>${m.name}</b>
+              <b>${escapeHtml(m.name)}</b>
             </button>
           </td>
 
@@ -1692,7 +1692,7 @@ function memberView(u) {
           <tr>
 
             <td>
-              <b>${m.name}</b>
+              <b>${escapeHtml(m.name)}</b>
 
               ${
                 m.id === me.id
@@ -2727,62 +2727,6 @@ function mEmailMatches(a, b) {
    PAYMENT
    ========================================================= */
 
-async function ensurePayment(mid) {
-  const g = db.groups.find(
-    (g) => g.id === activeGroup
-  );
-
-  const m = db.members.find(
-    (m) => m.id === mid
-  );
-
-  const n = monthIndex(
-    g,
-    month
-  );
-
-  let p = db.payments.find(
-    (p) =>
-      p.groupId === activeGroup &&
-      p.month === month &&
-      p.memberId === mid
-  );
-
-  if (p) return p;
-
-  const payload = {
-    group_id: activeGroup,
-    month,
-    member_id: mid,
-    amount_due:
-      dueForMonth(g, m, n),
-    amount_paid: 0,
-    status: "Pending",
-    date: null,
-    mode: null,
-    reference: "",
-    notes: "",
-  };
-
-  const { data, error } =
-    await supabaseClient
-      .from("payments")
-      .insert(payload)
-      .select()
-      .single();
-
-  if (error) {
-    console.error(error);
-    throw error;
-  }
-
-  p = mapPayment(data);
-
-  db.payments.push(p);
-
-  return p;
-}
-
 async function openPayment(mid) {
   try {
     const g = db.groups.find(
@@ -2794,8 +2738,13 @@ async function openPayment(mid) {
       (m) => m.id === mid
     );
 
-    const p =
-      await ensurePayment(mid);
+    if (!g || !m || m.groupId !== g.id) {
+      throw new Error("This member or group is no longer available. Reload the dashboard.");
+    }
+
+    // Opening the form must not write a pending payment to the database.
+    // savePayment creates any missing rows when the user submits.
+
 
     const items =
       openObligations(g, m);
@@ -2814,7 +2763,7 @@ async function openPayment(mid) {
       mid;
 
     paymentMemberInfo.innerHTML = `
-      <b>${m.name}</b>
+      <b>${escapeHtml(m.name)}</b>
 
       <div class="small muted">
         Previous dues:
@@ -2830,9 +2779,7 @@ async function openPayment(mid) {
       </div>
     `;
 
-    payAmount.value =
-      total ||
-      p.amountDue;
+    payAmount.value = total;
 
     payDate.value =
       new Date()
@@ -2849,7 +2796,7 @@ async function openPayment(mid) {
   } catch (err) {
     console.error(err);
     toast(
-      "Unable to open payment form"
+      "Unable to open payment form: " + (err.message || "Please reload and try again.")
     );
   }
 }
