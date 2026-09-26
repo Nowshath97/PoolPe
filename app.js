@@ -45,7 +45,14 @@ let db = {
 
 let session = null;
 let activeGroup = null;
-let month = "2026-09";
+function runningMonth() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit'
+  }).formatToParts(new Date());
+  return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
+}
+let month = runningMonth();
+let savingAuction = false;
 
 /* =========================================================
    INITIALIZATION
@@ -585,7 +592,7 @@ function mapAuction(a) {
   return {
     id: a.id,
     groupId: a.group_id,
-    month: a.month,
+    month: String(a.month).slice(0, 7),
     winnerMemberId: a.winner_member_id,
     bidAmount: Number(a.bid_amount || 0),
     payoutAmount: Number(
@@ -1505,8 +1512,9 @@ function groupPanel(g) {
 
           <button
             class="btn secondary"
-            onclick="modal('auctionModal')">
-            ${a ? "Edit" : "Record"}
+            onclick="openAuction()"
+            ${a || monthIndex(g, month) < 1 || monthIndex(g, month) > g.duration ? 'disabled' : ''}>
+            ${a ? "Allotted" : "Record"}
           </button>
 
         </div>
@@ -3292,117 +3300,60 @@ function openHistory(mid) {
    AUCTION
    ========================================================= */
 
-async function recordAuction() {
-  if (
-    !aw.value ||
-    !ab.value
-  ) {
-    return toast(
-      "Select recipient and enter payout"
-    );
+function auctionBlockReason(g, ym) {
+  if (!g || g.managerId !== currentUser()?.id) return 'Only the group manager can allot a bid.';
+  const cycle = monthIndex(g, ym);
+  if (cycle < 1) return 'Bidding starts in the group start month.';
+  if (cycle > g.duration) return 'This group cycle has ended.';
+  if (db.auctions.some(a => a.groupId === g.id && a.month === ym)) {
+    return 'A bid has already been allotted for this month.';
   }
+  return '';
+}
 
-  const g =
-    db.groups.find(
-      (g) =>
-        g.id === activeGroup
-    );
+function openAuction() {
+  month = runningMonth();
+  const g = db.groups.find(g => g.id === activeGroup);
+  const reason = auctionBlockReason(g, month);
+  if (reason) return toast(reason);
+  modal('auctionModal');
+}
 
-  const existing =
-    db.auctions.find(
-      (a) =>
-        a.groupId ===
-          activeGroup &&
-        a.month === month
-    );
-
-  const li =
-    monthIndex(
-      g,
-      month
-    );
-
+async function recordAuction() {
+  if (savingAuction) return;
+  month = runningMonth();
+  const g = db.groups.find(g => g.id === activeGroup);
+  const reason = auctionBlockReason(g, month);
+  if (reason) return toast(reason);
+  const winner = db.members.find(m => m.id === aw.value && m.groupId === g.id);
+  const amount = Number(ab.value);
+  if (!winner || !Number.isFinite(amount) || amount <= 0) {
+    return toast('Select a group member and enter a positive payout.');
+  }
+  if (liftFor(g.id, winner.id)) return toast('This member has already received a bid.');
+  savingAuction = true;
   try {
-    if (existing) {
-      const update = {
-        winner_member_id:
-          aw.value,
-        bid_amount:
-          Number(ab.value),
-        payout_amount:
-          Number(ab.value),
-        lift_month: li,
-      };
-
-      const {
-        data,
-        error,
-      } =
-        await supabaseClient
-          .from("auctions")
-          .update(update)
-          .eq(
-            "id",
-            existing.id
-          )
-          .select()
-          .single();
-
-      if (error) throw error;
-
-      Object.assign(
-        existing,
-        mapAuction(data)
-      );
-    } else {
-      const payload = {
-        group_id:
-          activeGroup,
-        month,
-        winner_member_id:
-          aw.value,
-        bid_amount:
-          Number(ab.value),
-        payout_amount:
-          Number(ab.value),
-        lift_month: li,
-        date: new Date()
-          .toISOString()
-          .slice(0, 10),
-      };
-
-      const {
-        data,
-        error,
-      } =
-        await supabaseClient
-          .from("auctions")
-          .insert(payload)
-          .select()
-          .single();
-
-      if (error) throw error;
-
-      db.auctions.push(
-        mapAuction(data)
-      );
-    }
-
-    closeModal(
-      "auctionModal"
-    );
-
+    const { data, error } = await supabaseClient.from('auctions').insert({
+      group_id: g.id,
+      month: `${month}-01`,
+      winner_member_id: winner.id,
+      bid_amount: amount,
+      payout_amount: amount,
+      lift_month: monthIndex(g, month),
+      date: new Date().toISOString().slice(0, 10)
+    }).select().single();
+    if (error) throw error;
+    db.auctions.push(mapAuction(data));
+    closeModal('auctionModal');
     render();
-
-    toast(
-      "Bid saved"
-    );
+    toast('Bid allotted. This month is now closed for bidding.');
   } catch (err) {
     console.error(err);
-    toast(
-      err.message ||
-        "Unable to save bid"
-    );
+    toast(err.code === '23505'
+      ? 'This month or member already has a bid allotted. Reload to see the latest allocation.'
+      : err.message || 'Unable to allot bid');
+  } finally {
+    savingAuction = false;
   }
 }
 
