@@ -308,6 +308,19 @@ async function loadUserData() {
       throw new Error("Unable to load profiles: " + profileError.message);
     }
     const profile = (profiles || []).find(p => p.id === authUser.id);
+    if (!profile) {
+      throw new Error(
+        "Your account profile could not be read. Check that profiles.id matches " +
+        "your login user ID (" + authUser.id + ") and that the profiles SELECT policy allows you to read it."
+      );
+    }
+
+    // The database profile is the source of truth for dashboard selection.
+    const detectedRole = String(profile.role || "").trim().toLowerCase();
+    if (!["manager", "member"].includes(detectedRole)) {
+      throw new Error("Your profile role must be manager or member. Please correct profiles.role for your account.");
+    }
+
 
     /*
       =========================================================
@@ -417,92 +430,9 @@ async function loadUserData() {
     }
 
 
-    /*
-      =========================================================
-      DETERMINE USER INFORMATION
-      =========================================================
-
-      If profiles has a row, use it.
-
-      If profiles does NOT have a row, use Supabase Auth
-      metadata as a fallback.
-    */
-
     const rawGroups = groups || [];
-
     const rawMembers = members || [];
-
-    const metadata =
-      authUser.user_metadata || {};
-
-
-    /*
-      Check whether current user owns a group.
-    */
-
-    const ownsGroup =
-      rawGroups.some(
-        function (group) {
-
-          return (
-            group.manager_id ===
-            authUser.id
-          );
-
-        }
-      );
-
-
-    /*
-      Check whether current user is a member.
-    */
-
-    const belongsToGroup =
-      rawMembers.some(
-        function (member) {
-
-          return (
-            member.user_id ===
-            authUser.id
-          );
-
-        }
-      );
-
-
-    /*
-      Determine role.
-
-      Priority:
-
-      1. profiles.role
-      2. Auth metadata role
-      3. User owns group -> manager
-      4. User belongs to group -> member
-      5. Default -> member
-    */
-
-    const detectedRole =
-      String(
-
-        (ownsGroup ? "manager" : null) ||
-
-        profile?.role ||
-
-        metadata.role ||
-
-        metadata.user_role ||
-
-        (
-          ownsGroup
-            ? "manager"
-            : belongsToGroup
-              ? "member"
-              : "member"
-        )
-
-      ).trim().toLowerCase();
-
+    const metadata = authUser.user_metadata || {};
 
     /*
       Determine display name.
@@ -573,32 +503,6 @@ async function loadUserData() {
 
     };
 
-
-    /*
-      No profile row is not a fatal error anymore.
-    */
-
-    if (!profile) {
-
-      console.warn(
-        "No profiles row found for this Auth user."
-      );
-
-      console.warn(
-        "Using Supabase Auth metadata / group membership as fallback."
-      );
-
-    }
-
-
-    /*
-      =========================================================
-      KEEP ONLY RELEVANT DATA
-      =========================================================
-
-      Keep your existing filtering code below this point
-      if your original loadUserData() contains it.
-    */
 
     console.log(
       "Loaded PoolPay user:",
