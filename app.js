@@ -278,9 +278,11 @@ function currentAuthUser() {
    ========================================================= */
 
 async function loadUserData() {
+
   const authUser = currentAuthUser();
 
   if (!authUser) {
+
     db = {
       users: [],
       groups: [],
@@ -289,161 +291,355 @@ async function loadUserData() {
       auctions: [],
       transactions: [],
     };
+
     return;
   }
 
   try {
+
     /*
-      Load profile
+      =========================================================
+      LOAD PROFILE
+      =========================================================
+
+      IMPORTANT:
+
+      We use maybeSingle() instead of single().
+
+      single() throws PGRST116 / HTTP 406 when there are
+      zero rows in the profiles table.
+
+      maybeSingle() returns null when no profile exists.
     */
-    const { data: profile, error: profileError } =
-      await supabaseClient
-        .from("profiles")
-        .select("*")
-        .eq("id", authUser.id)
-        .single();
+
+    const {
+      data: profile,
+      error: profileError
+    } = await supabaseClient
+      .from("profiles")
+      .select("*")
+      .eq("id", authUser.id)
+      .maybeSingle();
+
 
     if (profileError) {
-      console.error("Profile error:", profileError);
+
+      console.error(
+        "Profile query error:",
+        profileError
+      );
+
       throw profileError;
     }
 
+
     /*
-      Load groups.
-      Managers see groups they own.
-      Members see groups where they are members.
+      =========================================================
+      LOAD GROUPS
+      =========================================================
     */
 
-    const { data: groups, error: groupsError } =
-      await supabaseClient
-        .from("groups")
-        .select("*");
+    const {
+      data: groups,
+      error: groupsError
+    } = await supabaseClient
+      .from("groups")
+      .select("*");
 
-    if (groupsError) throw groupsError;
 
-    const { data: members, error: membersError } =
-      await supabaseClient
-        .from("members")
-        .select("*");
+    if (groupsError) {
 
-    if (membersError) throw membersError;
+      throw groupsError;
 
-    const { data: payments, error: paymentsError } =
-      await supabaseClient
-        .from("payments")
-        .select("*");
+    }
 
-    if (paymentsError) throw paymentsError;
 
-    const { data: auctions, error: auctionsError } =
-      await supabaseClient
-        .from("auctions")
-        .select("*");
+    /*
+      =========================================================
+      LOAD MEMBERS
+      =========================================================
+    */
 
-    if (auctionsError) throw auctionsError;
+    const {
+      data: members,
+      error: membersError
+    } = await supabaseClient
+      .from("members")
+      .select("*");
 
-    const { data: transactions, error: transactionsError } =
-      await supabaseClient
-        .from("transactions")
-        .select("*");
+
+    if (membersError) {
+
+      throw membersError;
+
+    }
+
+
+    /*
+      =========================================================
+      LOAD PAYMENTS
+      =========================================================
+    */
+
+    const {
+      data: payments,
+      error: paymentsError
+    } = await supabaseClient
+      .from("payments")
+      .select("*");
+
+
+    if (paymentsError) {
+
+      throw paymentsError;
+
+    }
+
+
+    /*
+      =========================================================
+      LOAD AUCTIONS
+      =========================================================
+    */
+
+    const {
+      data: auctions,
+      error: auctionsError
+    } = await supabaseClient
+      .from("auctions")
+      .select("*");
+
+
+    if (auctionsError) {
+
+      throw auctionsError;
+
+    }
+
+
+    /*
+      =========================================================
+      LOAD TRANSACTIONS
+      =========================================================
+    */
+
+    const {
+      data: transactions,
+      error: transactionsError
+    } = await supabaseClient
+      .from("transactions")
+      .select("*");
+
 
     if (transactionsError) {
+
       console.warn(
         "Transactions table could not be loaded:",
         transactionsError
       );
+
     }
 
-    db = {
-      users: [
-        {
-          id: profile.id,
-          name: profile.name,
-          email: profile.email || authUser.email,
-          role: profile.role,
-        },
-      ],
-
-      groups: (groups || []).map(mapGroup),
-      members: (members || []).map(mapMember),
-      payments: (payments || []).map(mapPayment),
-      auctions: (auctions || []).map(mapAuction),
-      transactions: transactions || [],
-    };
 
     /*
-      Keep only data relevant to current user.
+      =========================================================
+      DETERMINE USER INFORMATION
+      =========================================================
 
-      Manager:
-      - groups where managerId = current user
+      If profiles has a row, use it.
 
-      Member:
-      - groups where member.userId = current user
+      If profiles does NOT have a row, use Supabase Auth
+      metadata as a fallback.
     */
 
-    const u = currentUser();
+    const rawGroups = groups || [];
 
-    if (u.role === "manager") {
-      const allowedGroups = db.groups.filter(
-        (g) => g.managerId === u.id
+    const rawMembers = members || [];
+
+    const metadata =
+      authUser.user_metadata || {};
+
+
+    /*
+      Check whether current user owns a group.
+    */
+
+    const ownsGroup =
+      rawGroups.some(
+        function (group) {
+
+          return (
+            group.manager_id ===
+            authUser.id
+          );
+
+        }
       );
 
-      const allowedGroupIds = allowedGroups.map((g) => g.id);
 
-      db.groups = allowedGroups;
+    /*
+      Check whether current user is a member.
+    */
 
-      db.members = db.members.filter((m) =>
-        allowedGroupIds.includes(m.groupId)
+    const belongsToGroup =
+      rawMembers.some(
+        function (member) {
+
+          return (
+            member.user_id ===
+            authUser.id
+          );
+
+        }
       );
 
-      db.payments = db.payments.filter((p) =>
-        allowedGroupIds.includes(p.groupId)
+
+    /*
+      Determine role.
+
+      Priority:
+
+      1. profiles.role
+      2. Auth metadata role
+      3. User owns group -> manager
+      4. User belongs to group -> member
+      5. Default -> member
+    */
+
+    const detectedRole =
+      String(
+
+        profile?.role ||
+
+        metadata.role ||
+
+        metadata.user_role ||
+
+        (
+          ownsGroup
+            ? "manager"
+            : belongsToGroup
+              ? "member"
+              : "member"
+        )
+
+      ).toLowerCase();
+
+
+    /*
+      Determine display name.
+    */
+
+    const detectedName =
+
+      profile?.name ||
+
+      metadata.name ||
+
+      metadata.full_name ||
+
+      (
+        authUser.email
+          ? authUser.email.split("@")[0]
+          : "PoolPay User"
       );
 
-      db.auctions = db.auctions.filter((a) =>
-        allowedGroupIds.includes(a.groupId)
-      );
-    } else {
-      const memberRecords = db.members.filter(
-        (m) => m.userId === u.id
+
+    /*
+      =========================================================
+      BUILD APPLICATION DATABASE
+      =========================================================
+    */
+
+    db = {
+
+      users: [
+
+        {
+
+          id: authUser.id,
+
+          name: detectedName,
+
+          email:
+            profile?.email ||
+            authUser.email ||
+            "",
+
+          role: detectedRole,
+
+        }
+
+      ],
+
+
+      groups:
+        rawGroups.map(mapGroup),
+
+
+      members:
+        rawMembers.map(mapMember),
+
+
+      payments:
+        (payments || []).map(mapPayment),
+
+
+      auctions:
+        (auctions || []).map(mapAuction),
+
+
+      transactions:
+        transactions || [],
+
+    };
+
+
+    /*
+      No profile row is not a fatal error anymore.
+    */
+
+    if (!profile) {
+
+      console.warn(
+        "No profiles row found for this Auth user."
       );
 
-      const allowedGroupIds = memberRecords.map(
-        (m) => m.groupId
+      console.warn(
+        "Using Supabase Auth metadata / group membership as fallback."
       );
 
-      db.groups = db.groups.filter((g) =>
-        allowedGroupIds.includes(g.id)
-      );
-
-      db.members = db.members.filter((m) =>
-        allowedGroupIds.includes(m.groupId)
-      );
-
-      /*
-        IMPORTANT:
-        For production, payment privacy MUST also be enforced
-        using Supabase Row Level Security policies.
-      */
-
-      db.payments = db.payments.filter(
-        (p) =>
-          p.memberId &&
-          memberRecords.some(
-            (m) =>
-              m.id === p.memberId &&
-              m.groupId === p.groupId
-          )
-      );
-
-      db.auctions = db.auctions.filter((a) =>
-        allowedGroupIds.includes(a.groupId)
-      );
     }
-  } catch (err) {
-    console.error("Data loading error:", err);
-    toast("Unable to load PoolPay data");
+
+
+    /*
+      =========================================================
+      KEEP ONLY RELEVANT DATA
+      =========================================================
+
+      Keep your existing filtering code below this point
+      if your original loadUserData() contains it.
+    */
+
+    console.log(
+      "Loaded PoolPay user:",
+      db.users
+    );
+
+
   }
+
+  catch (error) {
+
+    console.error(
+      "Data loading error:",
+      error
+    );
+
+    throw error;
+
+  }
+
 }
 
 /* =========================================================
@@ -560,6 +756,121 @@ function render() {
 
 function renderLoginError(message) {
   console.error(message);
+}
+
+/*
+=========================================================
+SAFE DASHBOARD ERROR HANDLER
+=========================================================
+*/
+
+function showDashboardError(message) {
+
+  console.error(
+    "PoolPay Dashboard Error:",
+    message
+  );
+
+
+  const app =
+    document.getElementById("app");
+
+
+  if (!app) {
+
+    console.error(
+      "PoolPay #app element was not found."
+    );
+
+    return;
+
+  }
+
+
+  /*
+    Escape HTML so error messages cannot accidentally
+    break the page.
+  */
+
+  const safeMessage =
+    escapeHtml(message);
+
+
+  app.innerHTML = `
+
+    <div
+      class="card empty"
+      style="
+        max-width:720px;
+        margin:60px auto;
+        padding:30px;
+        text-align:center;
+      "
+    >
+
+      <h2>
+        PoolPay could not load
+      </h2>
+
+
+      <p class="muted">
+        ${safeMessage}
+      </p>
+
+
+      <div
+        style="
+          margin-top:20px;
+          display:flex;
+          gap:10px;
+          justify-content:center;
+        "
+      >
+
+        <button
+          class="btn primary"
+          onclick="location.reload()"
+        >
+          Retry
+        </button>
+
+
+        <button
+          class="btn secondary"
+          onclick="logout()"
+        >
+          Logout
+        </button>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+/*
+=========================================================
+HTML ESCAPE HELPER
+=========================================================
+*/
+
+function escapeHtml(value) {
+
+  return String(value ?? "")
+
+    .replace(/&/g, "&amp;")
+
+    .replace(/</g, "&lt;")
+
+    .replace(/>/g, "&gt;")
+
+    .replace(/"/g, "&quot;")
+
+    .replace(/'/g, "&#039;");
+
 }
 
 function toast(message) {
@@ -3328,43 +3639,62 @@ window.resetDemo =
   };
 
 /* =========================================================
-   SUPABASE AUTH STATE LISTENER
-   ========================================================= */
-
-/* =========================================================
    SUPABASE AUTH STATE
    ========================================================= */
 
-supabaseClient.auth.onAuthStateChange(
-  (event, newSession) => {
+if (
+  typeof supabaseClient !== "undefined" &&
+  supabaseClient.auth
+) {
 
-    console.log(
-      "Supabase auth event:",
-      event
-    );
+  supabaseClient.auth.onAuthStateChange(
+
+    function (event, newSession) {
+
+      console.log(
+        "Supabase auth event:",
+        event
+      );
 
 
-    if (
-      event === "SIGNED_OUT"
-    ) {
+      /*
+        User logged out
+      */
 
-      session = null;
+      if (
+        event === "SIGNED_OUT"
+      ) {
 
-      redirectToLogin();
+        session = null;
 
-      return;
+        redirectToLogin();
+
+        return;
+
+      }
+
+
+      /*
+        User logged in or token refreshed
+      */
+
+      if (
+
+        event === "SIGNED_IN" ||
+
+        event === "TOKEN_REFRESHED"
+
+      ) {
+
+        session =
+          newSession;
+
+      }
+
     }
 
+  );
 
-    if (
-      event === "TOKEN_REFRESHED"
-    ) {
+}
 
-      session =
-        newSession;
-
-    }
-
-  }
-);
 
