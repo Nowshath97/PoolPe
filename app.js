@@ -725,8 +725,14 @@ function currentUser() {
 
 function render() {
 
-  const u =
-    currentUser();
+  const u = currentUser();
+
+  console.log("================================");
+  console.log("CURRENT AUTH USER:", currentAuthUser());
+  console.log("CURRENT APP USER:", u);
+  console.log("CURRENT USER ROLE:", u?.role);
+  console.log("SESSION:", session);
+  console.log("================================");
 
 
   if (!session || !u) {
@@ -734,25 +740,31 @@ function render() {
     redirectToLogin();
 
     return;
+
   }
 
 
   if (
-    String(u.role)
-      .toLowerCase() ===
-    "manager"
+    String(u.role).toLowerCase() === "manager"
   ) {
+
+    console.log(
+      ">>> MANAGER DETECTED - OPENING MANAGER DASHBOARD"
+    );
 
     managerView(u);
 
   } else {
+
+    console.log(
+      ">>> MEMBER DETECTED - OPENING MEMBER DASHBOARD"
+    );
 
     memberView(u);
 
   }
 
 }
-
 
 function renderLoginError(message) {
   console.error(message);
