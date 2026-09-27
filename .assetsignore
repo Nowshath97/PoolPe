@@ -1,0 +1,17 @@
+# Cloudflare serves assets from the repository root.
+# Publish only the browser application, never installed tools or backend files.
+# Add new public assets here when adding pages, scripts, styles, or images.
+*
+!/index.html
+!/dashboard.html
+!/signup.html
+!/app.js
+!/manager-dashboard.js
+!/signup.js
+!/supabase-config.js
+!/styles.css
+!/manager-dashboard.css
+!/logo.css
+!/favicon.png
+!/logo.jpg
+!/main logo.jpeg
