@@ -95,53 +95,6 @@ function managerCycleLabel(s) {
   return !s.started ? 'Not started' : s.cycle > s.g.duration ? 'Cycle completed' : `Month ${s.cycle} of ${s.g.duration}`;
 }
 
-function managerView(u) {
-  const groups = db.groups.filter(g => g.managerId === u.id);
-  if (!groups.some(g => g.id === activeGroup)) activeGroup = groups[0]?.id || null;
-  const g = groups.find(g => g.id === activeGroup);
-  const s = g ? getManagerSummary(g) : null;
-  const key = `${u.id}/${activeGroup}/${month}`;
-  if (managerUI.key !== key) {
-    Object.assign(managerUI, { key, filter: s?.pendingCount ? 'pending' : 'all', search: '', expanded: false, explicitFilter: false });
-  } else if (!managerUI.explicitFilter && !managerUI.search) {
-    managerUI.filter = s?.pendingCount ? 'pending' : 'all';
-  }
-  document.getElementById('app').innerHTML = shell(`
-    <div class="manager-dashboard">
-      <div class="hero"><div><p class="eyebrow">YOUR GROUPS AT A GLANCE</p>
-        <h1>Manager Dashboard</h1><p class="muted">Manage groups, dues, collections and monthly bids.</p>
-      </div><span class="period-label">${escapeHtml(month)}</span></div>
-      ${renderGroupSelector(groups, s)}
-      ${s ? renderManagerDashboard(s) : `<section class="card empty manager-empty">
-        <h2>You haven't created a PoolPay group yet.</h2><p>Create a group to start managing your collections and monthly bids.</p>
-        <button class="btn primary" onclick="modal('groupModal')">Create your first group</button></section>`}
-    </div>${modals()}${s ? renderManagerDialogs(s) : ''}`, u);
-  if (s) filterMemberRows(managerUI.search);
-}
-
-function selectManagerGroup(id) {
-  if (!db.groups.some(g => g.id === id && g.managerId === currentUser()?.id)) return;
-  activeGroup = id;
-  render();
-}
-
-function renderGroupSelector(groups, s) {
-  return `<section class="card group-selector" aria-label="Group overview">
-    <div class="group-choice"><label for="managerGroupSelect">Group</label>
-      <select id="managerGroupSelect" onchange="selectManagerGroup(this.value)" ${groups.length ? '' : 'disabled'}>
-        ${groups.length ? groups.map(g => `<option value="${escapeHtml(g.id)}" ${g.id === activeGroup ? 'selected' : ''}>${escapeHtml(g.name)}</option>`).join('') : '<option>No groups yet</option>'}
-      </select>
-      ${s ? `<span class="muted small">${money(s.g.value)} &middot; ${managerCycleLabel(s)} &middot; ${s.rows.length} members</span>` : ''}
-    </div><button class="btn primary" onclick="modal('groupModal')">+ Create Group</button></section>`;
-}
-
-function renderManagerDashboard(s) {
-  return `${renderGroupStart(s)}${renderSummaryCards(s)}${renderCollectionProgress(s)}
-    <div class="manager-grid">${renderNeedsAttention(s)}${renderBidCard(s)}</div>
-    ${renderQuickActions(s)}${renderRecentActivity(s)}${renderMemberTable(s)}
-    <div class="manager-grid">${renderGroupInformation(s)}${renderGroupSettings(s)}</div>`;
-}
-
 function renderSummaryCards(s) {
   const cards = [
     ['Total chit value', money(s.g.value), escapeHtml(s.g.name)],
@@ -263,6 +216,9 @@ function renderMemberTable(s) {
 
 function setManagerFilter(filter, scroll = false) {
   if (!['all', 'paid', 'pending', 'dues', 'bid', 'eligible'].includes(filter)) return;
+  if (scroll && typeof navigateManager === 'function') {
+    navigateManager(`group/${encodeURIComponent(activeGroup)}/members`);
+  }
   managerUI.filter = filter;
   managerUI.explicitFilter = true;
   managerUI.expanded = false;

@@ -7,6 +7,9 @@
 !/signup.html
 !/app.js
 !/manager-dashboard.js
+!/manager-pages.js
+!/manager-router.js
+!/manager-portal.css
 !/signup.js
 !/supabase-config.js
 !/styles.css

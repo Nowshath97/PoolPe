@@ -2167,7 +2167,7 @@ async function createGroup() {
 
     closeModal("groupModal");
 
-    render();
+    selectManagerGroup(g.id);
 
     toast("Group created");
   } catch (err) {
