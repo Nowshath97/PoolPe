@@ -28,6 +28,8 @@
     href="styles.css"
   >
 
+  <link rel="stylesheet" href="manager-dashboard.css">
+
 </head>
 
 <body>
@@ -39,17 +41,11 @@
 
   <div id="app">
 
-    <div
-      style="
-        min-height:100vh;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-family:Arial,sans-serif;
-        color:#64748b;
-      "
-    >
-      Loading PoolPay...
+    <div class="dashboard-loading" role="status" aria-live="polite" aria-busy="true">
+      <strong>Loading PoolPay...</strong>
+      <div class="loading-bar" aria-hidden="true"></div>
+      <div class="loading-bar" aria-hidden="true"></div>
+      <div class="loading-bar" aria-hidden="true"></div>
     </div>
 
   </div>
@@ -70,6 +66,7 @@
   <!-- PoolPay application -->
 
   <script src="app.js"></script>
+  <script src="manager-dashboard.js"></script>
 
 </body>
 

@@ -1,0 +1,695 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="manager-dashboard.css"></head><body>
+    <header class="top">
+
+      <div class="logo">
+        PoolPe
+      </div>
+
+      <div class="navuser">
+
+        <span class="muted">
+          Manager · manager
+        </span>
+
+        <button
+          class="btn secondary"
+          onclick="logout()">
+          Logout
+        </button>
+
+      </div>
+
+    </header>
+
+    <main class="wrap">
+      
+    <div class="manager-dashboard">
+      <div class="hero"><div><p class="eyebrow">YOUR GROUPS AT A GLANCE</p>
+        <h1>Manager Dashboard</h1><p class="muted">Manage groups, dues, collections and monthly bids.</p>
+      </div><span class="period-label">2026-09</span></div>
+      <section class="card group-selector" aria-label="Group overview">
+    <div class="group-choice"><label for="managerGroupSelect">Group</label>
+      <select id="managerGroupSelect" onchange="selectManagerGroup(this.value)" >
+        <option value="g1" selected>Family Pool</option>
+      </select>
+      <span class="muted small">₹5,00,000 &middot; Month 1 of 20 &middot; 20 members</span>
+    </div><button class="btn primary" onclick="modal('groupModal')">+ Create Group</button></section>
+      <section class="manager-summary" aria-label="Monthly summary">
+    <div class="card metric"><div class="label">Total chit value</div><div class="value">₹5,00,000</div><div class="sub">Family Pool</div></div>
+    <div class="card metric"><div class="label">Monthly collection</div><div class="value">₹5,00,000</div><div class="sub">Expected from current members</div></div>
+    <div class="card metric"><div class="label">Collected</div><div class="value">₹1,25,000</div><div class="sub">5 of 20 members paid</div></div>
+    <div class="card metric"><div class="label">Pending</div><div class="value">₹3,75,000</div><div class="sub">15 members · this month</div></div>
+    <div class="card metric"><div class="label">Current cycle</div><div class="value">Month 1 of 20</div><div class="sub">20 total months</div></div></section><section class="card collection-card"><div class="section-title"><h2>Monthly Collection</h2><span class="pill winner">25% collected</span></div>
+    <p class="collection-amount"><strong>₹1,25,000</strong> <span class="muted">collected of ₹5,00,000</span></p>
+    <progress class="collection-progress" max="100" value="25" aria-label="Amount collected">25%</progress>
+    <div class="progress-caption"><span>5 of 20 members paid</span><span>₹3,75,000 remaining this month</span></div>
+    <progress class="member-progress" max="20" value="5" aria-label="Members fully paid">5 paid</progress>
+    <p class="small muted">Monthly amounts reflect payments allocated to 2026-09. Previous dues are shown separately.</p></section>
+    <div class="manager-grid"><section class="card attention-card"><div class="section-title"><h2>Needs Attention</h2><span class="attention-dot" aria-hidden="true"></span></div>
+    
+    <button class="attention-item" onclick="setManagerFilter('pending', true)"><span><b>15 payments pending</b><small>Review this month's outstanding payments</small></span><strong>₹3,75,000 &rsaquo;</strong></button><button class="attention-item" onclick="openAuction()"><span><b>This month's bid is not recorded</b><small>20 eligible members</small></span><strong>Record &rsaquo;</strong></button></section><section class="card manager-bid"><p class="eyebrow">NEXT MONTHLY BID</p>
+    <h2>Month 1 bid</h2><p class="muted">20 eligible members &middot; Schedule not set</p>
+      <button class="btn primary" onclick="openAuction()" >Run / Record Bid</button></section></div>
+    <section class="card quick-actions"><div class="section-title"><h2>Quick Actions</h2></div><div class="quick-action-grid">
+    <button class="btn primary" onclick="modal('managerPaymentPicker')" >Record Payment</button>
+    <button class="btn secondary" onclick="modal('memberModal')">+ Add Member</button>
+    <button class="btn secondary" onclick="openAuction()" >Run Monthly Bid</button>
+    <button class="btn secondary" onclick="modal('managerReports')">View Reports</button></div></section><section class="card"><div class="section-title"><h2>Recent Activity</h2><button class="linkbtn" onclick="modal('managerActivity')">View all activity &rarr;</button></div><ul class="activity-list"><li><span class="activity-icon payment" aria-hidden="true">&#10003;</span>
+    <div><b>S Nagaraju 1 · ₹25,000 paid for 2026-09</b><span class="small muted">Payment record summary</span></div><span class="small muted activity-date">2026-09-20</span></li><li><span class="activity-icon payment" aria-hidden="true">&#10003;</span>
+    <div><b>G Venkat 2 · ₹25,000 paid for 2026-09</b><span class="small muted">Payment record summary</span></div><span class="small muted activity-date">2026-09-20</span></li><li><span class="activity-icon payment" aria-hidden="true">&#10003;</span>
+    <div><b>P Veeraiah 3 · ₹25,000 paid for 2026-09</b><span class="small muted">Payment record summary</span></div><span class="small muted activity-date">2026-09-20</span></li><li><span class="activity-icon payment" aria-hidden="true">&#10003;</span>
+    <div><b>S Upendar 4 · ₹25,000 paid for 2026-09</b><span class="small muted">Payment record summary</span></div><span class="small muted activity-date">2026-09-20</span></li></ul></section><section class="card member-overview" id="managerMembers"><div class="section-title"><div><h2>Member Overview</h2><p class="small muted">20 of 20 member places filled</p></div>
+    <button class="btn secondary" onclick="modal('memberModal')">+ Add Member</button></div>
+    
+      <div class="member-filters" role="group" aria-label="Filter members"><button class="filter-chip" data-filter="all" aria-pressed="false" onclick="setManagerFilter('all')">All <span>20</span></button><button class="filter-chip" data-filter="paid" aria-pressed="false" onclick="setManagerFilter('paid')">Paid <span>5</span></button><button class="filter-chip" data-filter="pending" aria-pressed="true" onclick="setManagerFilter('pending')">Pending <span>15</span></button><button class="filter-chip" data-filter="dues" aria-pressed="false" onclick="setManagerFilter('dues')">With dues <span>0</span></button><button class="filter-chip" data-filter="bid" aria-pressed="false" onclick="setManagerFilter('bid')">Bid completed <span>0</span></button><button class="filter-chip" data-filter="eligible" aria-pressed="false" onclick="setManagerFilter('eligible')">Yet to bid <span>20</span></button></div><div class="member-search"><label class="sr-only" for="memberSearch">Search members by name</label><input id="memberSearch" type="search" placeholder="Search members" value="" oninput="filterMemberRows(this.value)"><span id="memberResultCount" class="small muted" role="status"></span></div>
+      <div class="table-wrap" tabindex="0" aria-label="Member payments"><table><thead><tr><th scope="col">Member</th><th scope="col">Payment</th><th scope="col">Previous Dues</th><th scope="col">This Month Due</th><th scope="col">Paid Amount</th><th scope="col">Bid Status</th><th scope="col">Action</th></tr></thead>
+      <tbody id="managerMemberRows"><tr data-member-name="S Nagaraju 1" data-paid="true" data-pending="false" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m0" onclick="openHistory(this.dataset.id)"><b>S Nagaraju 1</b></button></td>
+    <td><span class="pill paid">Paid</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹25,000</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m0" onclick="openPayment(this.dataset.id)">Edit Payment</button>
+      <details class="row-menu"><summary aria-label="More actions for S Nagaraju 1">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m0" onclick="openHistory(this.dataset.id)">View Details</button>
+        <button class="linkbtn due-text" data-id="m0" onclick="markPending(this.dataset.id)">Mark Pending</button></div></details></div></td></tr><tr data-member-name="G Venkat 2" data-paid="true" data-pending="false" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m1" onclick="openHistory(this.dataset.id)"><b>G Venkat 2</b></button></td>
+    <td><span class="pill paid">Paid</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹25,000</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m1" onclick="openPayment(this.dataset.id)">Edit Payment</button>
+      <details class="row-menu"><summary aria-label="More actions for G Venkat 2">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m1" onclick="openHistory(this.dataset.id)">View Details</button>
+        <button class="linkbtn due-text" data-id="m1" onclick="markPending(this.dataset.id)">Mark Pending</button></div></details></div></td></tr><tr data-member-name="P Veeraiah 3" data-paid="true" data-pending="false" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m2" onclick="openHistory(this.dataset.id)"><b>P Veeraiah 3</b></button></td>
+    <td><span class="pill paid">Paid</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹25,000</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m2" onclick="openPayment(this.dataset.id)">Edit Payment</button>
+      <details class="row-menu"><summary aria-label="More actions for P Veeraiah 3">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m2" onclick="openHistory(this.dataset.id)">View Details</button>
+        <button class="linkbtn due-text" data-id="m2" onclick="markPending(this.dataset.id)">Mark Pending</button></div></details></div></td></tr><tr data-member-name="S Upendar 4" data-paid="true" data-pending="false" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m3" onclick="openHistory(this.dataset.id)"><b>S Upendar 4</b></button></td>
+    <td><span class="pill paid">Paid</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹25,000</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m3" onclick="openPayment(this.dataset.id)">Edit Payment</button>
+      <details class="row-menu"><summary aria-label="More actions for S Upendar 4">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m3" onclick="openHistory(this.dataset.id)">View Details</button>
+        <button class="linkbtn due-text" data-id="m3" onclick="markPending(this.dataset.id)">Mark Pending</button></div></details></div></td></tr><tr data-member-name="Balu 5" data-paid="true" data-pending="false" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m4" onclick="openHistory(this.dataset.id)"><b>Balu 5</b></button></td>
+    <td><span class="pill paid">Paid</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹25,000</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m4" onclick="openPayment(this.dataset.id)">Edit Payment</button>
+      <details class="row-menu"><summary aria-label="More actions for Balu 5">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m4" onclick="openHistory(this.dataset.id)">View Details</button>
+        <button class="linkbtn due-text" data-id="m4" onclick="markPending(this.dataset.id)">Mark Pending</button></div></details></div></td></tr><tr data-member-name="C Mahesh 6" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m5" onclick="openHistory(this.dataset.id)"><b>C Mahesh 6</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m5" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for C Mahesh 6">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m5" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="M Rakesh 7" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m6" onclick="openHistory(this.dataset.id)"><b>M Rakesh 7</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m6" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for M Rakesh 7">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m6" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="Pragathi 8" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m7" onclick="openHistory(this.dataset.id)"><b>Pragathi 8</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m7" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for Pragathi 8">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m7" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="Suresh 9" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m8" onclick="openHistory(this.dataset.id)"><b>Suresh 9</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m8" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for Suresh 9">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m8" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="Samson 10" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m9" onclick="openHistory(this.dataset.id)"><b>Samson 10</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m9" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for Samson 10">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m9" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="S Nagaraju 11" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m10" onclick="openHistory(this.dataset.id)"><b>S Nagaraju 11</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m10" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for S Nagaraju 11">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m10" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="G Venkat 12" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m11" onclick="openHistory(this.dataset.id)"><b>G Venkat 12</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m11" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for G Venkat 12">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m11" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="P Veeraiah 13" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m12" onclick="openHistory(this.dataset.id)"><b>P Veeraiah 13</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m12" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for P Veeraiah 13">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m12" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="S Upendar 14" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m13" onclick="openHistory(this.dataset.id)"><b>S Upendar 14</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m13" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for S Upendar 14">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m13" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="Balu 15" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m14" onclick="openHistory(this.dataset.id)"><b>Balu 15</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m14" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for Balu 15">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m14" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="C Mahesh 16" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m15" onclick="openHistory(this.dataset.id)"><b>C Mahesh 16</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m15" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for C Mahesh 16">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m15" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="M Rakesh 17" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m16" onclick="openHistory(this.dataset.id)"><b>M Rakesh 17</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m16" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for M Rakesh 17">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m16" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="Pragathi 18" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m17" onclick="openHistory(this.dataset.id)"><b>Pragathi 18</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m17" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for Pragathi 18">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m17" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="Suresh 19" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m18" onclick="openHistory(this.dataset.id)"><b>Suresh 19</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m18" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for Suresh 19">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m18" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr data-member-name="Samson 20" data-paid="false" data-pending="true" data-dues="false" data-bid="false" data-eligible="true">
+    <td><button class="linkbtn" data-id="m19" onclick="openHistory(this.dataset.id)"><b>Samson 20</b></button></td>
+    <td><span class="pill warning">Pending</span></td>
+    <td><span class="pill paid">No dues</span></td>
+    <td>₹25,000</td><td>₹0</td>
+    <td><span class="pill neutral">Yet to Bid</span></td>
+    <td><div class="member-actions"><button class="btn secondary" data-id="m19" onclick="openPayment(this.dataset.id)">Mark Paid</button>
+      <details class="row-menu"><summary aria-label="More actions for Samson 20">&hellip;</summary><div>
+        <button class="linkbtn" data-id="m19" onclick="openHistory(this.dataset.id)">View Details</button>
+        </div></details></div></td></tr><tr id="noMemberMatches" hidden><td colspan="7" role="status">No members match this search and filter.</td></tr></tbody></table></div>
+      <button id="expandMemberList" class="btn secondary expand-members" onclick="expandManagerMembers()" hidden>View all members</button></section>
+    <div class="manager-grid"><section class="card"><div class="section-title"><h2>Upcoming / Group Information</h2></div><dl class="group-facts">
+    <div><dt>Current cycle</dt><dd>Month 1 of 20</dd></div><div><dt>Remaining cycles</dt><dd>19</dd></div>
+    <div><dt>Next collection month</dt><dd>2026-10</dd></div>
+    <div><dt>Payment due date</dt><dd>Not configured</dd></div><div><dt>Next bid date</dt><dd>Not scheduled</dd></div></dl></section><section class="card"><details class="group-settings"><summary>Manage Group / Group Settings</summary><dl class="group-facts">
+    <div><dt>Group name</dt><dd>Family Pool</dd></div><div><dt>Chit value</dt><dd>₹5,00,000</dd></div>
+    <div><dt>Monthly contribution</dt><dd>₹25,000</dd></div><div><dt>After winning a bid</dt><dd>₹27,000</dd></div>
+    <div><dt>Commission</dt><dd>4% (informational)</dd></div><div><dt>Start date</dt><dd>2026-09-01</dd></div><div><dt>Status</dt><dd>Active</dd></div></dl>
+    <details class="danger-zone"><summary>Danger Zone</summary><p class="small muted">Deleting a group removes its related data. This cannot be undone.</p><button class="btn danger" onclick="deleteGroup()">Delete Group</button></details></details>
+    <p class="small muted">View group terms and manage this group.</p></section></div>
+    </div>
+
+    <!-- GROUP MODAL -->
+
+    <div
+      id="groupModal"
+      class="modal">
+
+      <div class="dialog">
+
+        <h3>
+          Create pool group
+        </h3>
+
+        <div class="field">
+          <label>Group name</label>
+          <input id="gn">
+        </div>
+
+        <div class="field">
+          <label>Pool value</label>
+          <input
+            id="gv"
+            type="number">
+        </div>
+
+        <div class="field">
+          <label>
+            Monthly contribution
+          </label>
+          <input
+            id="gm"
+            type="number">
+        </div>
+
+        <div class="field">
+          <label>Duration</label>
+          <input
+            id="gd"
+            type="number"
+            value="20">
+        </div>
+
+        <div class="field">
+          <label>
+            Commission %
+          </label>
+          <input
+            id="gc"
+            type="number"
+            value="4"
+            step="0.1">
+        </div>
+
+        <div class="field">
+          <label>
+            Monthly premium after bid
+          </label>
+          <input
+            id="gpost"
+            type="number"
+            value="6000">
+        </div>
+
+        <div class="field">
+          <label>
+            Month 1 net payout
+          </label>
+          <input
+            id="gpayout"
+            type="number"
+            value="95000">
+        </div>
+
+        <div class="field">
+          <label>
+            Payout increase per month
+          </label>
+          <input
+            id="ginc"
+            type="number"
+            value="1000">
+        </div>
+
+        <div class="actions">
+
+          <button
+            class="btn secondary"
+            onclick="
+              closeModal('groupModal')
+            ">
+            Cancel
+          </button>
+
+          <button
+            class="btn primary"
+            onclick="createGroup()">
+            Create
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- MEMBER MODAL -->
+
+    <div
+      id="memberModal"
+      class="modal">
+
+      <div class="dialog">
+
+        <h3>
+          Add member
+        </h3>
+
+        <p id="memberLimitNotice" class="info-box" role="status" aria-live="polite">
+          Only 20 members are allowed per group.
+        </p>
+
+        <div class="field">
+          <label>Name</label>
+          <input id="mn">
+        </div>
+
+        <div class="field">
+          <label>Email</label>
+          <input id="me">
+        </div>
+
+        <div class="field">
+          <label>Phone</label>
+          <input id="mp">
+        </div>
+
+        <div class="actions">
+
+          <button
+            class="btn secondary"
+            onclick="
+              closeModal('memberModal')
+            ">
+            Cancel
+          </button>
+
+          <button
+            id="addMemberButton"
+            class="btn primary"
+            onclick="addMember()">
+            Add
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- PAYMENT MODAL -->
+
+    <div
+      id="paymentModal"
+      class="modal">
+
+      <div class="dialog">
+
+        <h3>
+          Record Payment
+        </h3>
+
+        <p class="muted small">
+          The amount will clear the
+          oldest outstanding months first.
+        </p>
+
+        <div
+          id="paymentMemberInfo"
+          class="info-box">
+        </div>
+
+        <input
+          id="paymentMemberId"
+          type="hidden">
+
+        <div class="field">
+          <label>
+            Amount Paid *
+          </label>
+
+          <input
+            id="payAmount"
+            type="number">
+        </div>
+
+        <div class="field">
+          <label>
+            Payment Date *
+          </label>
+
+          <input
+            id="payDate"
+            type="date"
+            aria-describedby="payDateHelp">
+          <p id="payDateHelp" class="small muted">
+            Select the date the payment was received. Past dates are allowed.
+          </p>
+        </div>
+
+        <div class="field">
+          <label>
+            Mode *
+          </label>
+
+          <select id="payMode">
+
+            <option value="">
+              Select mode
+            </option>
+
+            <option>UPI</option>
+            <option>Cash</option>
+            <option>Bank Transfer</option>
+            <option>Cheque</option>
+            <option>Other</option>
+
+          </select>
+        </div>
+
+        <div class="field">
+          <label>
+            Reference
+          </label>
+
+          <input
+            id="payReference">
+        </div>
+
+        <div class="field">
+          <label>
+            Notes
+          </label>
+
+          <textarea
+            id="payNotes"
+            rows="3">
+          </textarea>
+        </div>
+
+        <div class="actions">
+
+          <button
+            class="btn secondary"
+            onclick="
+              closeModal('paymentModal')
+            ">
+            Cancel
+          </button>
+
+          <button
+            class="btn primary"
+            onclick="savePayment()">
+            Record Payment
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- HISTORY MODAL -->
+
+    <div
+      id="historyModal"
+      class="modal">
+
+      <div class="dialog wide">
+
+        <div class="section-title">
+
+          <h3 id="historyTitle">
+            Payment History
+          </h3>
+
+          <button
+            class="btn secondary"
+            onclick="
+              closeModal('historyModal')
+            ">
+            Close
+          </button>
+
+        </div>
+
+        <div id="historyBody">
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- DUES MODAL -->
+
+    <div
+      id="duesModal"
+      class="modal">
+
+      <div class="dialog">
+
+        <div class="section-title">
+
+          <h3 id="duesTitle">
+            Outstanding Dues
+          </h3>
+
+          <button
+            class="btn secondary"
+            onclick="
+              closeModal('duesModal')
+            ">
+            Close
+          </button>
+
+        </div>
+
+        <div id="duesBody">
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- AUCTION MODAL -->
+
+    <div
+      id="auctionModal"
+      class="modal">
+
+      <div class="dialog">
+
+        <h3>
+          Record monthly bid
+        </h3>
+
+        <div class="field">
+
+          <label>
+            Recipient
+          </label>
+
+          <select id="aw">
+            <option value="m0">
+             S Nagaraju 1
+           </option><option value="m1">
+             G Venkat 2
+           </option><option value="m2">
+             P Veeraiah 3
+           </option><option value="m3">
+             S Upendar 4
+           </option><option value="m4">
+             Balu 5
+           </option><option value="m5">
+             C Mahesh 6
+           </option><option value="m6">
+             M Rakesh 7
+           </option><option value="m7">
+             Pragathi 8
+           </option><option value="m8">
+             Suresh 9
+           </option><option value="m9">
+             Samson 10
+           </option><option value="m10">
+             S Nagaraju 11
+           </option><option value="m11">
+             G Venkat 12
+           </option><option value="m12">
+             P Veeraiah 13
+           </option><option value="m13">
+             S Upendar 14
+           </option><option value="m14">
+             Balu 15
+           </option><option value="m15">
+             C Mahesh 16
+           </option><option value="m16">
+             M Rakesh 17
+           </option><option value="m17">
+             Pragathi 18
+           </option><option value="m18">
+             Suresh 19
+           </option><option value="m19">
+             Samson 20
+           </option>
+          </select>
+
+        </div>
+
+        <div class="field">
+
+          <label>
+            Net payout / bid amount
+          </label>
+
+          <input
+            id="ab"
+            type="number">
+
+        </div>
+
+        <div class="actions">
+
+          <button
+            class="btn secondary"
+            onclick="
+              closeModal('auctionModal')
+            ">
+            Cancel
+          </button>
+
+          <button
+            class="btn primary"
+            onclick="recordAuction()">
+            Save
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+
+  <div id="managerPaymentPicker" class="modal" role="dialog" aria-modal="true" aria-labelledby="managerPaymentPickerTitle"><div class="dialog"><div class="section-title"><h3 id="managerPaymentPickerTitle">Record Payment</h3><button class="btn secondary" onclick="closeModal('managerPaymentPicker')" aria-label="Close Record Payment">Close</button></div><p class="muted">Select a member to open the existing payment form.</p><div class="field"><label for="quickPaymentMember">Member</label><select id="quickPaymentMember"><option value="">Select a member</option><option value="m0">S Nagaraju 1 — ₹0 outstanding</option><option value="m1">G Venkat 2 — ₹0 outstanding</option><option value="m2">P Veeraiah 3 — ₹0 outstanding</option><option value="m3">S Upendar 4 — ₹0 outstanding</option><option value="m4">Balu 5 — ₹0 outstanding</option><option value="m5">C Mahesh 6 — ₹25,000 outstanding</option><option value="m6">M Rakesh 7 — ₹25,000 outstanding</option><option value="m7">Pragathi 8 — ₹25,000 outstanding</option><option value="m8">Suresh 9 — ₹25,000 outstanding</option><option value="m9">Samson 10 — ₹25,000 outstanding</option><option value="m10">S Nagaraju 11 — ₹25,000 outstanding</option><option value="m11">G Venkat 12 — ₹25,000 outstanding</option><option value="m12">P Veeraiah 13 — ₹25,000 outstanding</option><option value="m13">S Upendar 14 — ₹25,000 outstanding</option><option value="m14">Balu 15 — ₹25,000 outstanding</option><option value="m15">C Mahesh 16 — ₹25,000 outstanding</option><option value="m16">M Rakesh 17 — ₹25,000 outstanding</option><option value="m17">Pragathi 18 — ₹25,000 outstanding</option><option value="m18">Suresh 19 — ₹25,000 outstanding</option><option value="m19">Samson 20 — ₹25,000 outstanding</option></select></div><p id="quickPaymentError" class="due-text" role="status"></p><button class="btn primary" onclick="openManagerPayment()">Continue</button></div></div><div id="managerReports" class="modal" role="dialog" aria-modal="true" aria-labelledby="managerReportsTitle"><div class="dialog"><div class="section-title"><h3 id="managerReportsTitle">Collection Summary</h3><button class="btn secondary" onclick="closeModal('managerReports')" aria-label="Close Collection Summary">Close</button></div><p>Family Pool &middot; 2026-09</p><dl class="group-facts"><div><dt>Expected this month</dt><dd>₹5,00,000</dd></div><div><dt>Collected for this month</dt><dd>₹1,25,000</dd></div><div><dt>Pending this month</dt><dd>₹3,75,000</dd></div><div><dt>Previous dues</dt><dd>₹0</dd></div><div><dt>Total outstanding</dt><dd>₹3,75,000</dd></div><div><dt>Members paid</dt><dd>5 / 20</dd></div></dl><p class="small muted">Based on loaded payment records and the group's contribution schedule. Previous dues are separate from this month's collection.</p></div></div><div id="managerActivity" class="modal" role="dialog" aria-modal="true" aria-labelledby="managerActivityTitle"><div class="dialog"><div class="section-title"><h3 id="managerActivityTitle">All Activity</h3><button class="btn secondary" onclick="closeModal('managerActivity')" aria-label="Close All Activity">Close</button></div><ul class="activity-list"><li><span class="activity-icon payment" aria-hidden="true">&#10003;</span>
+    <div><b>S Nagaraju 1 · ₹25,000 paid for 2026-09</b><span class="small muted">Payment record summary</span></div><span class="small muted activity-date">2026-09-20</span></li><li><span class="activity-icon payment" aria-hidden="true">&#10003;</span>
+    <div><b>G Venkat 2 · ₹25,000 paid for 2026-09</b><span class="small muted">Payment record summary</span></div><span class="small muted activity-date">2026-09-20</span></li><li><span class="activity-icon payment" aria-hidden="true">&#10003;</span>
+    <div><b>P Veeraiah 3 · ₹25,000 paid for 2026-09</b><span class="small muted">Payment record summary</span></div><span class="small muted activity-date">2026-09-20</span></li><li><span class="activity-icon payment" aria-hidden="true">&#10003;</span>
+    <div><b>S Upendar 4 · ₹25,000 paid for 2026-09</b><span class="small muted">Payment record summary</span></div><span class="small muted activity-date">2026-09-20</span></li><li><span class="activity-icon payment" aria-hidden="true">&#10003;</span>
+    <div><b>Balu 5 · ₹25,000 paid for 2026-09</b><span class="small muted">Payment record summary</span></div><span class="small muted activity-date">2026-09-20</span></li></ul></div></div>
+    </main>
+  </body></html>
