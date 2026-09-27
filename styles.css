@@ -7,3 +7,4 @@ textarea{font:inherit}.field textarea{width:100%;padding:10px;border:1px solid #
 /* Brand assets: full lockup on sign-in, compact mark in the signed-in header. */
 .loginbox .logo{width:220px;height:150px;margin:0 auto 18px;font-size:0;background:url("main logo.jpeg") center/contain no-repeat}
 .top .logo{width:120px;height:42px;font-size:0;background:url("logo.jpg") left center/contain no-repeat}
+#addMemberButton:disabled{opacity:.5;cursor:not-allowed}

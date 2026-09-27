@@ -53,6 +53,9 @@ function runningMonth() {
 }
 let month = runningMonth();
 let savingAuction = false;
+let savingMember = false;
+const MAX_GROUP_MEMBERS = 20;
+const GROUP_MEMBER_LIMIT_MESSAGE = "A group can have a maximum of 20 members.";
 
 /* =========================================================
    INITIALIZATION
@@ -2299,6 +2302,10 @@ function modals() {
           Add member
         </h3>
 
+        <p id="memberLimitNotice" class="info-box" role="status" aria-live="polite">
+          Only 20 members are allowed per group.
+        </p>
+
         <div class="field">
           <label>Name</label>
           <input id="mn">
@@ -2325,6 +2332,7 @@ function modals() {
           </button>
 
           <button
+            id="addMemberButton"
             class="btn primary"
             onclick="addMember()">
             Add
@@ -2575,6 +2583,9 @@ function modals() {
    ========================================================= */
 
 function modal(id) {
+  if (id === "memberModal") {
+    showMemberLimit(groupIsFull(activeGroup));
+  }
   document
     .getElementById(id)
     ?.classList.add("show");
@@ -2665,13 +2676,34 @@ async function createGroup() {
    ADD MEMBER
    ========================================================= */
 
+function groupIsFull(groupId) {
+  return db.members.filter(m => m.groupId === groupId).length >= MAX_GROUP_MEMBERS;
+}
+
+function showMemberLimit(full = true) {
+  const notice = document.getElementById("memberLimitNotice");
+  if (notice) {
+    notice.textContent = full
+      ? "This group is full. Only 20 members are allowed per group."
+      : "Only 20 members are allowed per group.";
+    notice.classList.toggle("pending", full);
+  }
+  const button = document.getElementById("addMemberButton");
+  if (button) button.disabled = full;
+}
+
 async function addMember() {
+  if (savingMember) return;
   const u = currentUser();
 
   if (!u || u.role !== "manager") {
     return toast(
       "Only managers can add members"
     );
+  }
+
+  if (groupIsFull(activeGroup)) {
+    return showMemberLimit();
   }
 
   if (!mn.value.trim()) {
@@ -2707,7 +2739,18 @@ async function addMember() {
       linked.id;
   }
 
+  savingMember = true;
   try {
+    const { count, error: countError } = await supabaseClient
+      .from("members")
+      .select("id", { count: "exact", head: true })
+      .eq("group_id", payload.group_id);
+
+    if (countError) throw countError;
+    if (count >= MAX_GROUP_MEMBERS) {
+      return showMemberLimit();
+    }
+
     const { data, error } =
       await supabaseClient
         .from("members")
@@ -2727,11 +2770,16 @@ async function addMember() {
 
     toast("Member added");
   } catch (err) {
+    if (err.message === GROUP_MEMBER_LIMIT_MESSAGE) {
+      return showMemberLimit();
+    }
     console.error(err);
     toast(
       err.message ||
         "Unable to add member"
     );
+  } finally {
+    savingMember = false;
   }
 }
 

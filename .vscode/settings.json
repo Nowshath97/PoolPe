@@ -1,0 +1,11 @@
+{
+  "deno.enablePaths": [
+    "supabase/functions"
+  ],
+  "deno.lint": true,
+  "deno.path": "./node_modules/.bin/deno.exe",
+  "deno.config": "./supabase/functions/create-group/deno.json",
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  }
+}
