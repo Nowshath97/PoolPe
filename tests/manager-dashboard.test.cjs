@@ -70,6 +70,31 @@ test('start confirmation checks member count and persists selected month', async
   assert.equal(run('getManagerSummary(db.groups[0]).previousDues'), 0);
 });
 
+test('delete requires confirmed row removal and preserves data on rejection', async () => {
+  const { run, context } = setup();
+  context.confirm = () => true;
+  let result = { data: [], error: null };
+  context.supabaseClient = { from: () => ({ delete() { const query = {
+    eq: () => query, select: async () => result
+  }; return query; } }) };
+  run(`globalThis.messages=[]; toast=m=>messages.push(m)`);
+  await run('deleteGroup()');
+  assert.equal(run('db.groups.length'), 1);
+  assert.equal(run('db.members.length'), 20);
+  assert.match(run('messages[0]'), /Deletion was not confirmed/);
+  result = { data: null, error: { code: '23503' } };
+  await run('deleteGroup()');
+  assert.equal(run('db.groups.length'), 1);
+  assert.match(run('messages[1]'), /linked records/);
+  run(`db.transactions=[{group_id:'g1'}, {group_id:'g2'}]`);
+  result = { data: [{ id:'g1' }], error: null };
+  await run('deleteGroup()');
+  assert.equal(run('db.groups.length'), 0);
+  assert.equal(run('db.members.length'), 0);
+  assert.equal(run('db.transactions.length'), 1);
+  assert.equal(run('messages.at(-1)'), 'Group deleted');
+});
+
 test('summary uses database amounts, partial payments and group isolation', () => {
   const { run } = setup();
   run(`db.payments = [

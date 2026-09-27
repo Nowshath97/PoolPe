@@ -2944,70 +2944,41 @@ async function recordAuction() {
    DELETE GROUP
    ========================================================= */
 
+let deletingGroup = false;
+
 async function deleteGroup() {
-  const group = db.groups.find(g => g.id === activeGroup && g.managerId === currentUser()?.id);
-  if (!group) return toast("Only the group manager can delete this group.");
-  if (
-    !confirm(
-      `Are you sure you want to delete ${group.name}? This deletes all related data.`
-    )
-  ) {
-    return;
-  }
+  if (deletingGroup) return;
+  const user = currentUser();
+  const group = db.groups.find(g => g.id === activeGroup && g.managerId === user?.id);
+  if (!group || user?.role !== 'manager') return toast("Only the group manager can delete this group.");
+  if (!confirm(`Are you sure you want to delete ${group.name}? This deletes all related data.`)) return;
 
+  // Capture the target: the manager may select another group during the request.
+  const groupId = group.id;
+  deletingGroup = true;
   try {
-    const { error } =
-      await supabaseClient
-        .from("groups")
-        .delete()
-        .eq(
-          "id",
-          activeGroup
-        );
-
+    const { data, error } = await supabaseClient.from("groups")
+      .delete().eq("id", groupId).eq("manager_id", user.id).select("id");
     if (error) throw error;
+    if (!data?.some(row => row.id === groupId)) {
+      throw new Error("Deletion was not confirmed. The group may already be deleted, or your account may not have permission to delete it. Refresh the page; if it remains, check the groups DELETE policy in Supabase.");
+    }
 
-    db.groups =
-      db.groups.filter(
-        (g) =>
-          g.id !== activeGroup
-      );
-
-    db.members =
-      db.members.filter(
-        (m) =>
-          m.groupId !==
-          activeGroup
-      );
-
-    db.payments =
-      db.payments.filter(
-        (p) =>
-          p.groupId !==
-          activeGroup
-      );
-
-    db.auctions =
-      db.auctions.filter(
-        (a) =>
-          a.groupId !==
-          activeGroup
-      );
-
-    activeGroup = null;
-
+    db.groups = db.groups.filter(g => g.id !== groupId);
+    db.members = db.members.filter(m => m.groupId !== groupId);
+    db.payments = db.payments.filter(p => p.groupId !== groupId);
+    db.auctions = db.auctions.filter(a => a.groupId !== groupId);
+    db.transactions = db.transactions.filter(t => t.group_id !== groupId);
+    if (activeGroup === groupId) activeGroup = null;
     render();
-
-    toast(
-      "Group deleted"
-    );
+    toast("Group deleted");
   } catch (err) {
     console.error(err);
-
-    toast(
-      err.message ||
-        "Unable to delete group"
-    );
+    toast(err.code === '23503'
+      ? "This group still has linked records that prevent deletion. Review its database relationships before deleting it."
+      : err.message || "Unable to delete group");
+  } finally {
+    deletingGroup = false;
   }
 }
 
