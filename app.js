@@ -1617,7 +1617,7 @@ function shell(content, u) {
       <div class="navuser">
 
         <span class="muted">
-          ${u.name} · ${u.role}
+          ${escapeHtml(u.name)} · ${escapeHtml(u.role)}
         </span>
 
         <button
@@ -1654,8 +1654,8 @@ function modals() {
       )
       .map(
         (m) =>
-          `<option value="${m.id}">
-             ${m.name}
+          `<option value="${escapeHtml(m.id)}">
+             ${escapeHtml(m.name)}
            </option>`
       )
       .join("");
@@ -2115,7 +2115,7 @@ async function createGroup() {
       Number(ginc.value) || 0,
     // Supabase stores start as a DATE; use the first day of the pool month.
     start: `${month}-01`,
-    status: "Active",
+    status: "active",
   };
 
   try {

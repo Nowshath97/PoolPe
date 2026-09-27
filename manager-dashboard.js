@@ -50,6 +50,8 @@ function managerView(u) {
   const key = `${u.id}/${activeGroup}/${month}`;
   if (managerUI.key !== key) {
     Object.assign(managerUI, { key, filter: s?.pendingCount ? 'pending' : 'all', search: '', expanded: false, explicitFilter: false });
+  } else if (!managerUI.explicitFilter && !managerUI.search) {
+    managerUI.filter = s?.pendingCount ? 'pending' : 'all';
   }
   document.getElementById('app').innerHTML = shell(`
     <div class="manager-dashboard">
