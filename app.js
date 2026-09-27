@@ -818,6 +818,25 @@ function uid(prefix) {
    GROUP / MONTH HELPERS
    ========================================================= */
 
+function groupHasFinancialActivity(g) {
+  return db.payments.some(p => p.groupId === g.id && p.amountPaid > 0)
+    || db.auctions.some(a => a.groupId === g.id)
+    || db.transactions.some(t => t.group_id === g.id);
+}
+
+function groupNeedsStart(g) {
+  if (String(g.status).toLowerCase() === 'inactive') return true;
+  // Legacy groups were created active immediately. Treat unfilled groups with
+  // no financial activity as setup, without changing an operating group's dates.
+  return String(g.status).toLowerCase() === 'active'
+    && db.members.filter(m => m.groupId === g.id).length < MAX_GROUP_MEMBERS
+    && !groupHasFinancialActivity(g);
+}
+
+function groupHasStarted(g, ym = month) {
+  return !!g && !groupNeedsStart(g) && !!g.start && monthIndex(g, ym) >= 1;
+}
+
 function monthIndex(g, ym) {
   let [sy, sm] = g.start.split("-").map(Number);
   let [y, m] = ym.split("-").map(Number);
@@ -951,6 +970,7 @@ function memberStats(g, m) {
 }
 
 function duesFor(g, m) {
+  if (!groupHasStarted(g)) return { months: 0, amount: 0, items: [] };
   const current = monthIndex(
     g,
     month
@@ -1008,6 +1028,7 @@ function duesFor(g, m) {
 }
 
 function openObligations(g, m) {
+  if (!groupHasStarted(g)) return [];
   const current = Math.min(
     monthIndex(g, month),
     g.duration
@@ -1124,6 +1145,16 @@ function memberView(u) {
 
   const stats =
     memberStats(g, me);
+
+  if (!groupHasStarted(g)) {
+    document.getElementById('app').innerHTML = shell(`
+      <div class="hero"><h1>My Group</h1><div class="field"><label for="waitingGroup">Group</label>
+      <select id="waitingGroup" onchange="activeGroup=this.value;render()">${groups.map(x => `<option value="${escapeHtml(x.id)}" ${x.id === g.id ? 'selected' : ''}>${escapeHtml(x.name)}</option>`).join('')}</select></div></div>
+      <section class="card"><h2>${escapeHtml(g.name)}</h2><span class="pill neutral">Not started</span>
+      <p>${groupNeedsStart(g) ? 'The manager is gathering members and will confirm the chit start month.' : `The chit starts in ${escapeHtml(g.start.slice(0, 7))}.`}</p>
+      <p class="muted">Payments and dues begin only from the confirmed start month.</p></section>`, u);
+    return;
+  }
 
   const myDues =
     duesFor(g, me);
@@ -2113,9 +2144,9 @@ async function createGroup() {
       Number(gv.value),
     payout_increment:
       Number(ginc.value) || 0,
-    // Supabase stores start as a DATE; use the first day of the pool month.
+    // Keep a valid DATE for existing schemas; inactive means no start confirmed.
     start: `${month}-01`,
-    status: "active",
+    status: "inactive",
   };
 
   try {
@@ -2227,6 +2258,15 @@ async function addMember() {
       return showMemberLimit();
     }
 
+    // Preserve setup for legacy unfilled groups before the final member joins.
+    const group = db.groups.find(g => g.id === payload.group_id);
+    if (group && groupNeedsStart(group) && String(group.status).toLowerCase() === 'active') {
+      const { data: updatedGroup, error: setupError } = await supabaseClient.from('groups')
+        .update({ status: 'inactive' }).eq('id', group.id).eq('manager_id', u.id).select().single();
+      if (setupError) throw setupError;
+      Object.assign(group, mapGroup(updatedGroup));
+    }
+
     const { data, error } =
       await supabaseClient
         .from("members")
@@ -2290,6 +2330,7 @@ async function openPayment(mid) {
     }
 
     // Opening the form must not write a pending payment to the database.
+    if (!groupHasStarted(g)) return toast('Payments begin from the confirmed chit start month.');
     // savePayment creates any missing rows when the user submits.
 
 
@@ -2363,6 +2404,8 @@ async function savePayment() {
 
   const amt =
     Number(payAmount.value);
+
+  if (!groupHasStarted(g)) return toast('Payments begin from the confirmed chit start month.');
 
   if (!amt || amt <= 0) {
     return toast(
@@ -2841,6 +2884,7 @@ function openHistory(mid) {
 
 function auctionBlockReason(g, ym) {
   if (!g || g.managerId !== currentUser()?.id) return 'Only the group manager can allot a bid.';
+  if (groupNeedsStart(g)) return 'Confirm the chit start month before recording a bid.';
   const cycle = monthIndex(g, ym);
   if (cycle < 1) return 'Bidding starts in the group start month.';
   if (cycle > g.duration) return 'This group cycle has ended.';

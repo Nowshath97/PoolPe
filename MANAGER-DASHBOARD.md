@@ -7,6 +7,19 @@ write handlers remain in `app.js`.
 
 ## Calculations
 
+- New groups use the existing `inactive` status while recruiting. Their stored
+  start date is a placeholder, and does not accrue dues. With exactly 20 members,
+  the manager can confirm the current or a future start month. This updates the
+  existing `start` and `status` fields; it requires the existing groups UPDATE
+  permission. No schema or RLS changes are applied.
+- Legacy active groups with fewer than 20 members and no financial activity
+  are treated as setup. Adding another member persists their inactive state so
+  reaching 20 members does not automatically start collections. Groups with
+  recorded financial activity keep their existing timeline.
+- Before the confirmed month, both dashboards show Not started. Payment and
+  bid handlers reject early recording. These are application checks, not new
+  database constraints; existing RLS continues to control database access.
+
 - Expected collection sums each current member's saved monthly `amountDue`,
   falling back to `dueForMonth` during the configured group cycle.
 - Collected includes partial payments allocated to the current month. It does

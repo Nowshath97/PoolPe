@@ -31,6 +31,45 @@ function setup() {
   return { run, context, el };
 }
 
+test('setup groups never accrue dues even after placeholder start month', () => {
+  const { run, el } = setup();
+  run(`db.groups[0].status='inactive'; db.groups[0].start='2025-01-01'; render()`);
+  assert.equal(run('getManagerSummary(db.groups[0]).pendingCount'), 0);
+  assert.equal(run('getManagerSummary(db.groups[0]).previousDues'), 0);
+  assert.equal(run('openObligations(db.groups[0], db.members[0]).length'), 0);
+  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].status'), 'Not started');
+  assert.match(el('app').innerHTML, /Confirm start month/);
+  assert.match(run(`auctionBlockReason(db.groups[0],month)`), /Confirm/);
+  run(`db.groups[0].status='active'; db.members=db.members.slice(0,1)`);
+  assert.equal(run('groupNeedsStart(db.groups[0])'), true);
+  run(`db.payments=[{groupId:'g1',memberId:'m0',amountPaid:100}]`);
+  assert.equal(run('groupNeedsStart(db.groups[0])'), false);
+});
+
+test('start confirmation checks member count and persists selected month', async () => {
+  const { run, context, el } = setup();
+  run(`db.groups[0].status='inactive'; runningMonth=()=> '2026-09'`);
+  el('chitStartMonth').value = '2026-10';
+  let count = 19, saved;
+  context.supabaseClient = { from(table) {
+    if (table === 'members') return { select: () => ({ eq: async () => ({ count }) }) };
+    return { update(payload) { saved = payload; const chain = { eq: () => chain, select: () => chain,
+      single: async () => ({ data: { id:'g1',manager_id:'manager',name:'Family Pool',monthly:25000,value:500000,duration:20,...payload } }) }; return chain; } };
+  } };
+  run('toast=()=>{}');
+  await run('startManagerGroup()');
+  assert.equal(saved, undefined);
+  assert.match(el('groupStartError').textContent, /exactly 20/);
+  count = 20;
+  await run('startManagerGroup()');
+  assert.equal(saved.start, '2026-10-01');
+  assert.equal(saved.status, 'active');
+  assert.equal(run('groupHasStarted(db.groups[0])'), false);
+  run(`month='2026-10'`);
+  assert.equal(run('getManagerSummary(db.groups[0]).expected'), 500000);
+  assert.equal(run('getManagerSummary(db.groups[0]).previousDues'), 0);
+});
+
 test('summary uses database amounts, partial payments and group isolation', () => {
   const { run } = setup();
   run(`db.payments = [

@@ -1,6 +1,58 @@
 /* Manager presentation only. Supabase access and write handlers remain in app.js. */
 const managerUI = { key: null, filter: 'all', search: '', expanded: false, explicitFilter: false };
 const MEMBER_PREVIEW_COUNT = 8;
+let savingGroupStart = false;
+
+function renderGroupStart(s) {
+  if (!groupNeedsStart(s.g)) return '';
+  return `<section class="card"><h2>Prepare your chit group</h2>
+    <p>Add all ${MAX_GROUP_MEMBERS} members, then choose the official start month. No payments or dues apply during setup.</p>
+    <form onsubmit="event.preventDefault();startManagerGroup()">
+      <div class="field"><label for="chitStartMonth">Chit start month</label>
+      <input id="chitStartMonth" type="month" min="${runningMonth()}" value="${runningMonth()}" required></div>
+      <p id="groupStartError" class="due-text" role="status"></p>
+      <button id="confirmGroupStart" class="btn primary" ${s.rows.length !== MAX_GROUP_MEMBERS ? 'disabled' : ''}>Confirm start month</button>
+      <span class="small muted">${s.rows.length} / ${MAX_GROUP_MEMBERS} members joined</span>
+    </form></section>`;
+}
+
+async function startManagerGroup() {
+  if (savingGroupStart) return;
+  const g = managerGroup();
+  const errorBox = document.getElementById('groupStartError');
+  const showError = message => { if (errorBox) errorBox.textContent = message; };
+  if (!g || !groupNeedsStart(g)) return showError('This group is no longer awaiting a start month.');
+  const selected = document.getElementById('chitStartMonth').value;
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(selected) || selected < runningMonth()) {
+    return showError('Select the current month or a future month.');
+  }
+  if (groupHasFinancialActivity(g)) return showError('This group has financial activity. Its start date cannot be changed here.');
+  savingGroupStart = true;
+  const button = document.getElementById('confirmGroupStart');
+  if (button) button.disabled = true;
+  showError('');
+  try {
+    const { count, error: countError } = await supabaseClient.from('members')
+      .select('id', { count: 'exact', head: true }).eq('group_id', g.id);
+    if (countError) throw countError;
+    if (count !== MAX_GROUP_MEMBERS) throw new Error(`The group needs exactly ${MAX_GROUP_MEMBERS} members before it can start.`);
+    const { data, error } = await supabaseClient.from('groups')
+      .update({ start: `${selected}-01`, status: 'active' })
+      .eq('id', g.id).eq('manager_id', currentUser().id).eq('status', g.status)
+      .select().single();
+    if (error) throw error;
+    Object.assign(g, mapGroup(data));
+    month = runningMonth();
+    managerUI.key = null;
+    render();
+    toast(`Chit start month confirmed: ${selected}`);
+  } catch (error) {
+    showError(error.message || 'Unable to confirm the start month.');
+  } finally {
+    savingGroupStart = false;
+    if (button) button.disabled = db.members.filter(m => m.groupId === g.id).length !== MAX_GROUP_MEMBERS;
+  }
+}
 
 function managerGroup() {
   const u = currentUser();
@@ -11,17 +63,18 @@ function managerGroup() {
 
 function getManagerSummary(g) {
   const cycle = monthIndex(g, month);
-  const inCycle = cycle >= 1 && cycle <= g.duration;
+  const started = groupHasStarted(g);
+  const inCycle = started && cycle >= 1 && cycle <= g.duration;
   const members = db.members.filter(m => m.groupId === g.id);
   const rows = members.map(m => {
     const payment = db.payments.find(p => p.groupId === g.id && p.memberId === m.id && p.month === month);
-    const due = Number(payment?.amountDue ?? (inCycle ? dueForMonth(g, m, cycle) : 0));
-    const paid = Number(payment?.amountPaid || 0);
+    const due = started ? Number(payment?.amountDue ?? (inCycle ? dueForMonth(g, m, cycle) : 0)) : 0;
+    const paid = started ? Number(payment?.amountPaid || 0) : 0;
     const balance = Math.max(0, due - paid);
     const dues = duesFor(g, m);
     const lift = liftFor(g.id, m.id);
-    return { m, payment, due, paid, balance, dues, lift,
-      status: balance > 0 ? (paid > 0 ? 'Partial' : 'Pending') : due > 0 || paid > 0 ? 'Paid' : 'Not due' };
+    return { m, payment, due, paid, balance, dues, lift, started,
+      status: !started ? 'Not started' : balance > 0 ? (paid > 0 ? 'Partial' : 'Pending') : due > 0 || paid > 0 ? 'Paid' : 'Not due' };
   });
   const expected = rows.reduce((sum, r) => sum + r.due, 0);
   const collected = rows.reduce((sum, r) => sum + r.paid, 0);
@@ -32,14 +85,14 @@ function getManagerSummary(g) {
   const previousDues = rows.reduce((sum, r) => sum + r.dues.amount, 0);
   const bidDone = rows.filter(r => r.lift).length;
   const auction = db.auctions.find(a => a.groupId === g.id && a.month === month);
-  return { g, cycle, inCycle, rows, expected, collected, pending, paidCount, pendingCount,
+  return { g, cycle, started, inCycle, rows, expected, collected, pending, paidCount, pendingCount,
     duesCount, previousDues, bidDone, eligible: members.length - bidDone, auction,
     winner: members.find(m => m.id === auction?.winnerMemberId),
     percent: expected > 0 ? collected / expected * 100 : 0 };
 }
 
 function managerCycleLabel(s) {
-  return s.cycle < 1 ? 'Not started' : s.cycle > s.g.duration ? 'Cycle completed' : `Month ${s.cycle} of ${s.g.duration}`;
+  return !s.started ? 'Not started' : s.cycle > s.g.duration ? 'Cycle completed' : `Month ${s.cycle} of ${s.g.duration}`;
 }
 
 function managerView(u) {
@@ -83,7 +136,7 @@ function renderGroupSelector(groups, s) {
 }
 
 function renderManagerDashboard(s) {
-  return `${renderSummaryCards(s)}${renderCollectionProgress(s)}
+  return `${renderGroupStart(s)}${renderSummaryCards(s)}${renderCollectionProgress(s)}
     <div class="manager-grid">${renderNeedsAttention(s)}${renderBidCard(s)}</div>
     ${renderQuickActions(s)}${renderRecentActivity(s)}${renderMemberTable(s)}
     <div class="manager-grid">${renderGroupInformation(s)}${renderGroupSettings(s)}</div>`;
@@ -102,6 +155,7 @@ function renderSummaryCards(s) {
 }
 
 function renderCollectionProgress(s) {
+  if (!s.started) return '<section class="card"><h2>Monthly Collection</h2><p class="muted">Collections begin from the confirmed chit start month. No payments are due yet.</p></section>';
   return `<section class="card collection-card"><div class="section-title"><h2>Monthly Collection</h2><span class="pill winner">${s.percent.toFixed(0)}% collected</span></div>
     <p class="collection-amount"><strong>${money(s.collected)}</strong> <span class="muted">collected of ${money(s.expected)}</span></p>
     <progress class="collection-progress" max="100" value="${Math.min(100, Math.max(0, s.percent))}" aria-label="Amount collected">${s.percent.toFixed(0)}%</progress>
@@ -111,6 +165,7 @@ function renderCollectionProgress(s) {
 }
 
 function renderNeedsAttention(s) {
+  if (!s.started) return `<section class="card"><h2>Group Setup</h2><p>${s.rows.length} of ${MAX_GROUP_MEMBERS} members joined.</p><p class="muted">${groupNeedsStart(s.g) ? 'Complete the group and confirm its start month.' : `Scheduled to start in ${escapeHtml(s.g.start.slice(0, 7))}.`}</p></section>`;
   const items = [];
   if (s.pendingCount) items.push(`<button class="attention-item" onclick="setManagerFilter('pending', true)"><span><b>${s.pendingCount} payments pending</b><small>Review this month's outstanding payments</small></span><strong>${money(s.pending)} &rsaquo;</strong></button>`);
   if (s.duesCount) items.push(`<button class="attention-item" onclick="setManagerFilter('dues', true)"><span><b>${s.duesCount} members have previous dues</b><small>Unpaid balances from earlier cycles</small></span><strong>${money(s.previousDues)} &rsaquo;</strong></button>`);
@@ -121,6 +176,7 @@ function renderNeedsAttention(s) {
 }
 
 function renderBidCard(s) {
+  if (!s.started) return `<section class="card manager-bid"><p class="eyebrow">MONTHLY BID</p><h2>Not started</h2><p class="muted">${groupNeedsStart(s.g) ? 'Confirm the chit start month after all 20 members join.' : `Bidding begins in ${escapeHtml(s.g.start.slice(0, 7))}.`}</p></section>`;
   const a = s.auction;
   return `<section class="card manager-bid"><p class="eyebrow">${a ? "THIS MONTH'S BID" : 'NEXT MONTHLY BID'}</p>
     ${a ? `<h2>${escapeHtml(s.winner?.name || 'Recorded recipient')}</h2><p class="bid-payout">Payout: <strong>${money(a.payoutAmount ?? a.bidAmount)}</strong></p>
@@ -131,7 +187,7 @@ function renderBidCard(s) {
 
 function renderQuickActions(s) {
   return `<section class="card quick-actions"><div class="section-title"><h2>Quick Actions</h2></div><div class="quick-action-grid">
-    <button class="btn primary" onclick="modal('managerPaymentPicker')" ${!s.rows.length ? 'disabled' : ''}>Record Payment</button>
+    <button class="btn primary" onclick="modal('managerPaymentPicker')" ${!s.rows.length || !s.started ? 'disabled' : ''}>Record Payment</button>
     <button class="btn secondary" onclick="modal('memberModal')">+ Add Member</button>
     <button class="btn secondary" onclick="openAuction()" ${s.auction || !s.inCycle || !s.eligible ? 'disabled' : ''}>${s.auction ? 'Bid Completed' : 'Run Monthly Bid'}</button>
     <button class="btn secondary" onclick="modal('managerReports')">View Reports</button></div></section>`;
@@ -175,6 +231,7 @@ function memberMatchesSearch(name, term) {
 }
 
 function renderMemberFilters(s) {
+  if (!s.started) return `<div class="member-filters"><button class="filter-chip" data-filter="all" aria-pressed="true" onclick="setManagerFilter('all')">All <span>${s.rows.length}</span></button><span class="pill neutral">Chit not started</span></div>`;
   const filters = [['all', 'All', s.rows.length], ['paid', 'Paid', s.paidCount], ['pending', 'Pending', s.pendingCount], ['dues', 'With dues', s.duesCount], ['bid', 'Bid completed', s.bidDone], ['eligible', 'Yet to bid', s.eligible]];
   return `<div class="member-filters" role="group" aria-label="Filter members">${filters.map(([key, name, count]) => `<button class="filter-chip" data-filter="${key}" aria-pressed="${managerUI.filter === key}" onclick="setManagerFilter('${key}')">${name} <span>${count}</span></button>`).join('')}</div>`;
 }
@@ -185,10 +242,10 @@ function renderMemberRow(r) {
   return `<tr data-member-name="${escapeHtml(r.m.name)}" data-paid="${r.status === 'Paid'}" data-pending="${r.balance > 0}" data-dues="${r.dues.amount > 0}" data-bid="${!!r.lift}" data-eligible="${!r.lift}">
     <td><button class="linkbtn" data-id="${id}" onclick="openHistory(this.dataset.id)"><b>${escapeHtml(r.m.name)}</b></button></td>
     <td><span class="pill ${r.status === 'Paid' ? 'paid' : r.balance ? 'warning' : 'neutral'}">${r.status}</span></td>
-    <td>${r.dues.amount ? `<button class="linkbtn due-text" data-id="${id}" onclick="openDues(this.dataset.id)">${money(r.dues.amount)}<small class="cell-detail">${r.dues.months} month(s)</small></button>` : '<span class="pill paid">No dues</span>'}</td>
-    <td>${money(r.due)}${r.status === 'Partial' ? `<small class="cell-detail muted">${money(r.balance)} remaining</small>` : ''}</td><td>${money(r.paid)}</td>
+    <td>${!r.started ? '&mdash;' : r.dues.amount ? `<button class="linkbtn due-text" data-id="${id}" onclick="openDues(this.dataset.id)">${money(r.dues.amount)}<small class="cell-detail">${r.dues.months} month(s)</small></button>` : '<span class="pill paid">No dues</span>'}</td>
+    <td>${r.started ? money(r.due) : '&mdash;'}${r.status === 'Partial' ? `<small class="cell-detail muted">${money(r.balance)} remaining</small>` : ''}</td><td>${r.started ? money(r.paid) : '&mdash;'}</td>
     <td><span class="pill ${r.lift ? 'winner' : 'neutral'}">${r.lift ? 'Bid Won' : 'Yet to Bid'}</span></td>
-    <td><div class="member-actions"><button class="btn secondary" data-id="${id}" onclick="openPayment(this.dataset.id)">${r.status === 'Paid' ? 'Edit Payment' : 'Mark Paid'}</button>
+    <td><div class="member-actions"><button class="btn secondary" data-id="${id}" onclick="openPayment(this.dataset.id)" ${!r.started ? 'disabled' : ''}>${!r.started ? 'Not started' : r.status === 'Paid' ? 'Edit Payment' : 'Mark Paid'}</button>
       <details class="row-menu"><summary aria-label="More actions for ${escapeHtml(r.m.name)}">&hellip;</summary><div>
         <button class="linkbtn" data-id="${id}" onclick="openHistory(this.dataset.id)">View Details</button>
         ${r.payment?.status === 'Paid' ? `<button class="linkbtn due-text" data-id="${id}" onclick="markPending(this.dataset.id)">Mark Pending</button>` : ''}</div></details></div></td></tr>`;
@@ -244,11 +301,11 @@ function expandManagerMembers() {
 }
 
 function renderGroupInformation(s) {
-  const remaining = Math.max(0, s.g.duration - Math.max(0, s.cycle));
-  const next = s.cycle < 1 ? 1 : s.cycle + 1;
+  const remaining = s.started ? Math.max(0, s.g.duration - Math.max(0, s.cycle)) : s.g.duration;
+  const next = !s.started ? 1 : s.cycle + 1;
   return `<section class="card"><div class="section-title"><h2>Upcoming / Group Information</h2></div><dl class="group-facts">
     <div><dt>Current cycle</dt><dd>${managerCycleLabel(s)}</dd></div><div><dt>Remaining cycles</dt><dd>${remaining}</dd></div>
-    ${next <= s.g.duration ? `<div><dt>Next collection month</dt><dd>${escapeHtml(ymFor(s.g, next))}</dd></div>` : ''}
+    ${!groupNeedsStart(s.g) && next <= s.g.duration ? `<div><dt>Next collection month</dt><dd>${escapeHtml(ymFor(s.g, next))}</dd></div>` : ''}
     <div><dt>Payment due date</dt><dd>Not configured</dd></div><div><dt>Next bid date</dt><dd>Not scheduled</dd></div></dl></section>`;
 }
 
@@ -257,7 +314,7 @@ function renderGroupSettings(s) {
   return `<section class="card"><details class="group-settings"><summary>Manage Group / Group Settings</summary><dl class="group-facts">
     <div><dt>Group name</dt><dd>${escapeHtml(g.name)}</dd></div><div><dt>Chit value</dt><dd>${money(g.value)}</dd></div>
     <div><dt>Monthly contribution</dt><dd>${money(g.monthly)}</dd></div><div><dt>After winning a bid</dt><dd>${money(g.postLiftMonthly)}</dd></div>
-    <div><dt>Commission</dt><dd>${g.commission ?? 4}% (informational)</dd></div><div><dt>Start date</dt><dd>${escapeHtml(g.start)}</dd></div><div><dt>Status</dt><dd>${escapeHtml(g.status)}</dd></div></dl>
+    <div><dt>Commission</dt><dd>${g.commission ?? 4}% (informational)</dd></div><div><dt>Start date</dt><dd>${groupNeedsStart(g) ? 'Not confirmed' : escapeHtml(g.start)}</dd></div><div><dt>Status</dt><dd>${escapeHtml(g.status)}</dd></div></dl>
     <details class="danger-zone"><summary>Danger Zone</summary><p class="small muted">Deleting a group removes its related data. This cannot be undone.</p><button class="btn danger" onclick="deleteGroup()">Delete Group</button></details></details>
     <p class="small muted">View group terms and manage this group.</p></section>`;
 }
