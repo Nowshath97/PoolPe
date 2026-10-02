@@ -1835,103 +1835,33 @@ function modals() {
       <div class="dialog payment-dialog">
         <header class="payment-dialog-header">
           <div><h3 id="paymentModalTitle">Record Payment</h3>
-          <p class="muted small">Enter the amount received and review the months covered.</p></div>
+          <p id="paymentModalDescription" class="muted">Enter the amount received and review the months covered.</p></div>
           <button class="payment-close" type="button" aria-label="Close payment dialog" onclick="closeModal('paymentModal')">&times;</button>
         </header>
         <div class="payment-dialog-body">
         <div class="payment-card-grid">
-        <section class="payment-form-card" aria-labelledby="paymentContributionTitle">
-          <h4 id="paymentContributionTitle">Contribution</h4>
-        <div
-          id="paymentMemberInfo"
-          class="info-box">
-        </div>
-
-        <input
-          id="paymentMemberId"
-          type="hidden">
-
-        <input id="payRecord" type="hidden">
-        <details id="payAllocationControls" class="payment-disclosure"><summary>Adjust allocation</summary>
-        <div class="field"><label id="payMonthLabel" for="payMonth">Pay dues through *</label>
-          <select id="payMonth" required onchange="updatePaymentContext()"></select></div>
-        <div class="field"><label for="payAllocationOrder">Apply payment</label><select id="payAllocationOrder" onchange="updatePaymentAllocation()"><option value="oldest">Oldest unpaid month first</option><option value="selected">Selected month first, then earlier dues</option></select></div>
-        </details>
-        <div id="payMonthContext" class="info-box" aria-live="polite"></div>
-        <div id="payAllocationPreview" aria-live="polite"></div>
-        </section>
-        <section class="payment-form-card" aria-labelledby="paymentDetailsTitle">
-          <h4 id="paymentDetailsTitle">Payment details</h4>
-        <div class="payment-fields-grid">
-        <div class="field">
-          <label for="payAmount">
-            Amount Paid *
-          </label>
-
-          <input
-            id="payAmount"
-            oninput="updatePaymentAllocation()"
-            type="number">
-        </div>
-
-        <div class="field">
-          <label for="payDate">
-            Payment Date *
-          </label>
-
-          <input
-            id="payDate"
-            type="date"
-            aria-describedby="payDateHelp">
-          <p id="payDateHelp" class="small muted">
-            Select the date the payment was received. Past dates are allowed.
-          </p>
-        </div>
-
-        <div class="field">
-          <label for="payMode">
-            Mode *
-          </label>
-
-          <select id="payMode">
-
-            <option value="">
-              Select mode
-            </option>
-
-            <option>UPI</option>
-            <option>Cash</option>
-            <option>Bank Transfer</option>
-            <option>Cheque</option>
-            <option>Other</option>
-
-          </select>
-        </div>
-
-        </div>
-        <details id="payOptionalDetails" class="payment-disclosure"><summary>Reference and notes (optional)</summary>
-        <div class="field">
-          <label for="payReference">
-            Reference
-          </label>
-
-          <input
-            id="payReference">
-        </div>
-
-        <div class="field payment-notes">
-          <label for="payNotes">
-            Notes
-          </label>
-
-          <textarea
-            id="payNotes"
-            rows="3">
-          </textarea>
-        </div>
-
-        </details>
-        </section>
+          <section class="payment-entry" aria-label="Payment entry">
+            <div id="paymentMemberInfo" class="payment-member-summary"></div>
+            <input id="paymentMemberId" type="hidden"><input id="payRecord" type="hidden">
+            <select id="payMonth" hidden></select><input id="payAllocationOrder" type="hidden" value="oldest">
+            <div id="payAllocationControls" hidden></div>
+            <div class="field payment-amount-field"><label for="payAmount">Amount received <span class="payment-required">*</span></label>
+              <div class="payment-amount-input"><span aria-hidden="true">&#8377;</span><input id="payAmount" type="number" min="0.01" step="0.01" oninput="updatePaymentAllocation()" aria-describedby="paymentAmountError"><button type="button" aria-label="Clear amount" onclick="setPaymentAmount('')">&times;</button></div>
+              <p id="paymentAmountError" class="payment-error" role="status"></p>
+              <div id="paymentQuickAmounts" class="payment-quick-amounts"></div>
+            </div>
+            <div class="payment-fields-grid">
+              <div class="field"><label for="payDate">Payment date <span class="payment-required">*</span></label><input id="payDate" type="date" onchange="updatePaymentAllocation()" required></div>
+              <div class="field"><label for="payMode">Payment mode <span class="payment-required">*</span></label><select id="payMode" onchange="updatePaymentAllocation()" required><option value="">Select mode</option><option>UPI</option><option>Cash</option><option>Bank Transfer</option><option>Cheque</option><option>Other</option></select></div>
+            </div>
+            <details id="payOptionalDetails" class="payment-disclosure payment-advanced"><summary>Advanced options (optional)</summary>
+              <div class="payment-fields-grid"><div class="field"><label for="payReference">Reference</label><input id="payReference" placeholder="UPI ref, receipt no."></div><div class="field"><label for="payNotes">Notes</label><textarea id="payNotes" rows="3" placeholder="Add any notes (optional)"></textarea></div></div>
+            </details>
+          </section>
+          <aside class="payment-review" aria-label="Payment review">
+            <section id="payMonthContext" class="payment-outstanding" aria-live="polite"></section>
+            <section id="payAllocationPreview" class="payment-preview" aria-live="polite"></section>
+          </aside>
         </div>
         </div>
         <footer class="actions payment-dialog-actions">
@@ -2332,7 +2262,7 @@ async function openPayment(mid, preferOutstanding = false) {
   const months = validPaymentMonths(g);
   if (!months.length) return toast('Payments begin from the confirmed chit start month.');
   paymentMemberId.value = mid;
-  paymentMemberInfo.innerHTML = `<b>Member: ${escapeHtml(m.name)}</b>`;
+  document.getElementById('paymentModalDescription').textContent = `Add a payment for ${m.name} and update the dues automatically.`;
   document.getElementById('payRecord').value = '';
   document.getElementById('payAllocationOrder').value = 'oldest';
   document.getElementById('payAllocationControls').open = false;
@@ -2356,7 +2286,7 @@ async function openPaymentEdit(mid, key) {
   closeModal('historyModal');
   selectPaymentRecord();
   document.getElementById('paymentModalTitle').textContent = receipt ? 'Edit Payment' : 'Edit legacy payment';
-  document.getElementById('paymentSaveButton').textContent = 'Save Changes';
+  updatePaymentAllocation();
   document.getElementById('payOptionalDetails').open = !!(payReference.value || payNotes.value);
 }
 
@@ -2377,17 +2307,46 @@ function paymentAllocationPlan(amount = Number(payAmount.value)) {
   });
   return {rows, remaining, original, total:rows.reduce((n,r) => n+r.balance,0)};
 }
+function setPaymentAmount(amount) {
+  payAmount.value = amount;
+  updatePaymentAllocation();
+  payAmount.focus();
+}
 function updatePaymentAllocation() {
   const plan = paymentAllocationPlan();
+  const {m, p, receipt} = paymentFormData();
   const rows = plan.rows.filter(r => r.balance > 0);
-  const covered = rows.filter(r => r.amount > 0).map(r => contributionMonthLabel(r.month)).join(' + ');
-  document.getElementById('payAllocationPreview').innerHTML = `<p><b>${covered ? `Covers ${escapeHtml(covered)}` : 'No months covered'}</b></p><p class="small muted">${plan.original.length ? 'Replaces the selected payment. ' : ''}One payment, allocated across these months.</p><dl class="payment-allocation-list">${rows.map(r => `<div><dt>${escapeHtml(contributionMonthLabel(r.month))}<small class="cell-detail">${money(r.balance)} outstanding</small></dt><dd>${money(r.amount)}</dd></div>`).join('')}</dl>${plan.remaining > 0 ? `<p class="due-text" role="status">${money(plan.remaining)} exceeds dues through the selected month. Choose a later month or reduce the amount.</p>` : ''}`;
+  const amount = Number(payAmount.value);
+  const applied = rows.reduce((n,r) => n+r.amount,0);
+  const remaining = Math.max(0, plan.total-applied);
+  const settled = rows.filter(r => r.amount > 0 && r.amount === r.balance);
+  const partial = rows.filter(r => r.amount > 0 && r.amount < r.balance);
+  const count = `${rows.length} month${rows.length === 1 ? '' : 's'}`;
+  const error = !Number.isFinite(amount) || amount <= 0 ? 'Enter an amount greater than zero.' : plan.remaining > 0 ? `Payment exceeds the outstanding amount of ${money(plan.total)}.` : '';
+  document.getElementById('paymentAmountError').textContent = error;
+  paymentMemberInfo.innerHTML = `<span class="payment-avatar">${escapeHtml(m.name.trim().charAt(0).toUpperCase())}</span><div class="payment-member-name"><b>${escapeHtml(m.name)}</b></div><div class="payment-member-due"><b>${money(plan.total)} due</b><span>${rows.length ? count : 'No dues'}</span></div>`;
+  const first = rows[0]?.balance;
+  document.getElementById('paymentQuickAmounts').innerHTML = `${first && first !== plan.total ? `<button type="button" class="btn secondary" aria-pressed="${amount === first}" onclick="setPaymentAmount(${first})">${money(first)}</button>` : ''}${plan.total > 0 ? `<button type="button" class="btn secondary" aria-pressed="${amount === plan.total}" onclick="setPaymentAmount(${plan.total})">${money(plan.total)} &middot; Pay all</button>` : ''}<button type="button" class="btn secondary" onclick="payAmount.focus();payAmount.select()">Custom</button>`;
+  document.getElementById('payMonthContext').innerHTML = `<h4>${p || receipt ? 'Dues available for this edit' : 'Outstanding dues'}</h4><strong class="payment-due-total">${money(plan.total)}</strong><p>${rows.length ? count : 'No dues'}</p><div class="payment-due-months">${rows.map(r => {
+    const status = r.month < month ? 'Overdue' : r.paid > 0 ? 'Partially Paid' : 'Due';
+    return `<div><span>${escapeHtml(contributionMonthLabel(r.month))}</span><b>${money(r.balance)}</b><span class="pill ${status === 'Overdue' ? 'payment-overdue' : 'warning'}">${status}</span></div>`;
+  }).join('')}</div>`;
+  const names = list => list.map(r => contributionMonthLabel(r.month)).join(' and ');
+  let result = settled.length ? `This payment will settle ${settled.length} month${settled.length === 1 ? '' : 's'}` : 'This payment will reduce your dues';
+  let detail = settled.length ? `${names(settled)} will be marked as paid.` : '';
+  if (partial.length) detail += ` ${names(partial)} will be partially paid.`;
+  if (remaining > 0) detail += ` ${money(remaining)} will remain due.`;
+  document.getElementById('payAllocationPreview').innerHTML = `<h4>Allocation preview <span class="payment-info" title="Payments cover the oldest outstanding month first">&#9432;</span></h4><p class="muted small">This payment will be allocated to the oldest dues first.${p || receipt ? ' Replaces the payment being edited.' : ''}</p><div class="payment-preview-table"><table><thead><tr><th>Month</th><th>Due Amount</th><th>Payment</th><th>Remaining</th></tr></thead><tbody>${rows.map(r => `<tr><td>${escapeHtml(contributionMonthLabel(r.month))}</td><td>${money(r.balance)}</td><td class="payment-allocated">${money(r.amount)}</td><td>${money(r.balance-r.amount)}</td></tr>`).join('')}</tbody><tfoot><tr><th>Total</th><th>${money(plan.total)}</th><th class="payment-allocated">${money(applied)}</th><th>${money(remaining)}</th></tr></tfoot></table></div>${!error && applied > 0 ? `<div class="payment-result"><span aria-hidden="true">&#10003;</span><div><b>${escapeHtml(result)}</b><p>${escapeHtml(detail)}</p></div></div>` : ''}`;
+  const button = document.getElementById('paymentSaveButton');
+  button.textContent = `${p || receipt ? 'Save' : 'Record'} ${money(Number.isFinite(amount) ? amount : 0)}`;
+  button.disabled = !!error || !payDate.value || !Number.isFinite(Date.parse(payDate.value)) || !payMode.value || paymentSaving;
 }
 function selectPaymentRecord() {
   const {p, receipt} = paymentFormData();
   const record = receipt || p;
   if (record) document.getElementById('payMonth').value = receipt ? receipt.allocations.map(a => String(a.month).slice(0,7)).sort().at(-1) : p.month;
-  payDate.value = record?.date || new Date().toISOString().slice(0, 10);
+  const today = new Date();
+  payDate.value = record?.date || `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   payMode.value = record?.mode || '';
   payReference.value = record?.reference || '';
   payNotes.value = record?.notes || '';
@@ -2397,7 +2356,6 @@ function selectPaymentRecord() {
 }
 function updatePaymentContext(resetAmount = false) {
   const plan = paymentAllocationPlan(0);
-  document.getElementById('payMonthContext').innerHTML = `<b>Dues through ${escapeHtml(contributionMonthLabel(document.getElementById('payMonth').value))}</b><div>Total available to pay ${money(plan.total)}</div>`;
   if (resetAmount) payAmount.value = plan.total;
   updatePaymentAllocation();
 }
@@ -2421,6 +2379,7 @@ async function savePayment() {
   const limit = p?.month === ym ? Math.max(available.balance, p.amountPaid) : available.balance;
   if (amt > limit) return toast('Amount exceeds remaining contribution ' + money(available.balance));
   paymentSaving = true;
+  document.getElementById('paymentSaveButton').disabled = true;
   try {
     // Keep the existing cumulative monthly record model. Sum all records when
     // reading, but add new receipts to one record to respect possible unique keys.
@@ -2452,10 +2411,11 @@ async function savePayment() {
     toast(receiptWarning ? 'Payment saved, but receipt history could not be saved. Do not submit again.' : 'Payment saved. Monthly balances updated.');
   } catch (err) {
     toast('Unable to save payment: ' + (err.message || 'Reload and try again.'));
-  } finally { paymentSaving = false; }
+  } finally { paymentSaving = false; updatePaymentAllocation(); }
 }
 async function saveAllocatedPayment(g, m, p, receipt, plan, allocations, amount) {
   paymentSaving = true;
+  document.getElementById('paymentSaveButton').disabled = true;
   try {
     const months = [...new Set([...allocations.map(r => r.month), ...plan.original.map(a => String(a.month).slice(0,7))])];
     const balances = months.map(ym => ({month:ym, ...paymentForMonth(g,m,ym)})).map(r => ({month:r.month, due:r.due, paid:r.paid}));
@@ -2473,7 +2433,7 @@ async function saveAllocatedPayment(g, m, p, receipt, plan, allocations, amount)
     closeModal('paymentModal'); render(); toast('Payment saved. Monthly balances updated.');
   } catch (err) {
     toast('Unable to save payment: ' + (err.message || 'Reload and try again.'));
-  } finally { paymentSaving = false; }
+  } finally { paymentSaving = false; updatePaymentAllocation(); }
 }
 
 async function markPending(mid) {

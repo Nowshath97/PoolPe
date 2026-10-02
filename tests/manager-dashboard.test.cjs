@@ -627,3 +627,33 @@ test('record form resets editing and hides advanced controls; history shows each
   run("db.payments[1].amountPaid=25000");
   assert.match(run('renderMemberRow(getManagerSummary(db.groups[0]).rows[0])'),/onclick="openHistory\(this.dataset.id\)"/);
 });
+
+
+test('reference payment UI computes quick amounts, result messages and submit validation', async () => {
+  const {run,el}=paymentSetup();
+  await run("openPayment('m0')");
+  assert.match(el('paymentQuickAmounts').innerHTML,/setPaymentAmount\(25000\)/);
+  assert.match(el('paymentQuickAmounts').innerHTML,/setPaymentAmount\(50000\)/);
+  assert.equal(el('paymentSaveButton').disabled,true);
+  el('payMode').value='Cash';
+  for (const [amount,remaining,settled] of [[50000,0,2],[25000,25000,1],[30000,20000,1],[20000,30000,0]]) {
+    run(`setPaymentAmount(${amount})`);
+    assert.equal(el('paymentSaveButton').disabled,false);
+    assert.match(el('paymentSaveButton').textContent,/Record/);
+    const plan=run('paymentAllocationPlan()');
+    assert.equal(plan.total-plan.rows.reduce((n,r)=>n+r.amount,0),remaining);
+    if(settled) assert.match(el('payAllocationPreview').innerHTML,new RegExp(`settle ${settled} month`));
+    if(remaining) assert.match(el('payAllocationPreview').innerHTML,/will remain due/);
+  }
+  run('setPaymentAmount(60000)');
+  assert.equal(el('paymentSaveButton').disabled,true);
+  assert.match(el('paymentAmountError').textContent,/exceeds the outstanding amount/);
+  run('setPaymentAmount(0)');assert.equal(el('paymentSaveButton').disabled,true);
+  run("db.payments=[{id:'sep',groupId:'g1',memberId:'m0',month:'2026-09',amountDue:25000,amountPaid:10000}];setPaymentAmount(20000)");
+  assert.deepEqual(JSON.parse(run('JSON.stringify(paymentAllocationPlan().rows.map(r=>r.amount))')),[15000,5000]);
+  run("db.payments[0].amountPaid=25000;updatePaymentContext(true)");
+  assert.equal((el('paymentQuickAmounts').innerHTML.match(/setPaymentAmount\(25000\)/g)||[]).length,1);
+  assert.match(el('payAllocationPreview').innerHTML,/settle 1 month/);
+  run("db.payments=[];db.auctions=[{groupId:'g1',winnerMemberId:'m0',liftMonth:1,month:'2026-09'}];updatePaymentContext(true)");
+  assert.equal(el('payAmount').value,52000);
+});
