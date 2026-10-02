@@ -72,9 +72,9 @@ function renderManagerShell(u, route, content) {
   const selected = route.page === 'group' ? 'groups' : route.page;
   const links = [['dashboard', 'Dashboard', '▦'], ['groups', 'Groups', '◫'], ['reports', 'Reports', '▤'], ['activity', 'Activity', '◷']];
   const link = ([page, label, icon]) => `<a href="#/${page}" ${selected === page ? 'aria-current="page"' : ''}><span aria-hidden="true">${icon}</span>${label}</a>`;
-  return `<div class="manager-portal"><header class="manager-mobile-header"><img src="logo.jpg" alt="PoolPay"><button id="managerMenuButton" class="btn secondary" aria-controls="managerSidebar" aria-expanded="false" onclick="toggleManagerDrawer()" aria-label="Open navigation">☰</button></header>
+  return `<div class="manager-portal"><header class="manager-mobile-header"><img src="logo-teal.png" alt="PoolPay"><button id="managerMenuButton" class="btn secondary" aria-controls="managerSidebar" aria-expanded="false" onclick="toggleManagerDrawer()" aria-label="Open navigation">☰</button></header>
     <button id="managerNavOverlay" class="nav-overlay" aria-label="Close navigation" onclick="toggleManagerDrawer(false)" hidden></button>
-    <aside id="managerSidebar" class="manager-sidebar"><a href="#/dashboard" class="portal-logo"><img src="logo.jpg" alt="PoolPay"></a>
+    <aside id="managerSidebar" class="manager-sidebar"><a href="#/dashboard" class="portal-logo"><img src="logo-teal.png" alt="PoolPay"></a>
       <nav aria-label="Manager navigation">${links.map(link).join('')}</nav>
       <div class="sidebar-bottom"><div class="manager-profile"><span class="manager-avatar">${escapeHtml((u.name || 'M').slice(0, 1))}</span><div><b>${escapeHtml(u.name)}</b><small>Manager</small></div></div>
       <nav aria-label="Account navigation">${link(['settings', 'Settings', '⚙'])}<button onclick="logout()"><span aria-hidden="true">↪</span>Logout</button></nav></div></aside>
