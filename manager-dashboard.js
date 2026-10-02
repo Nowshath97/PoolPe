@@ -108,13 +108,15 @@ function renderSummaryCards(s) {
 }
 
 function renderCollectionProgress(s) {
-  if (!s.started) return '<section class="card"><h2>Monthly Collection</h2><p class="muted">Collections begin from the confirmed chit start month. No payments are due yet.</p></section>';
-  return `<section class="card collection-card"><div class="section-title"><h2>Monthly Collection</h2><span class="pill winner">${s.percent.toFixed(0)}% collected</span></div>
-    <p class="collection-amount"><strong>${money(s.collected)}</strong> <span class="muted">collected of ${money(s.expected)}</span></p>
-    <progress class="collection-progress" max="100" value="${Math.min(100, Math.max(0, s.percent))}" aria-label="Amount collected">${s.percent.toFixed(0)}%</progress>
-    <div class="progress-caption"><span>${s.paidCount} of ${s.rows.length} members paid</span><span>${money(s.pending)} remaining this month</span></div>
-    <progress class="member-progress" max="${Math.max(1, s.rows.length)}" value="${s.paidCount}" aria-label="Members fully paid">${s.paidCount} paid</progress>
-    <p class="small muted">Monthly amounts reflect payments allocated to ${escapeHtml(month)}. Previous dues are shown separately.</p></section>`;
+  if (!s.started) return '<section class="collection-overview"><h2>Monthly collection</h2><p class="muted">Collections begin from the confirmed chit start month. No payments are due yet.</p></section>';
+  return `<section class="collection-overview" aria-label="Monthly collection summary">
+    <div class="section-title"><div><p class="collection-period">${escapeHtml(month)} / COLLECTION SUMMARY</p><h2>Monthly collection</h2></div><span class="collection-percentage">${s.percent.toFixed(0)}% collected</span></div>
+    <div class="collection-layout"><div class="collection-primary">
+      <p class="collection-amount"><strong>${money(s.collected)}</strong><span class="muted"> collected of ${money(s.expected)}</span></p>
+      <progress class="collection-progress" max="100" value="${Math.min(100, Math.max(0, s.percent))}" aria-label="Amount collected">${s.percent.toFixed(0)}%</progress>
+      <p class="progress-caption">${s.paidCount} of ${s.rows.length} members fully paid</p>
+    </div><dl class="collection-balances"><div><dt>Remaining this month</dt><dd>${money(s.pending)}</dd></div><div><dt>Previous dues</dt><dd>${money(s.previousDues)}</dd></div></dl></div>
+    <div class="collection-bottom"><span>Payments allocated to ${escapeHtml(month)}. Previous dues are separate.</span><a href="#/group/${encodeURIComponent(s.g.id)}/payments">Manage payments &rarr;</a></div></section>`;
 }
 
 function renderNeedsAttention(s) {

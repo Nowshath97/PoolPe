@@ -19,9 +19,44 @@
 .manager-main a.btn { display: inline-block; text-decoration: none; }
 .manager-main a:not(.btn):not(.group-tabs a) { color: var(--brand2); }
 .manager-mobile-header, .nav-overlay { display: none; }
-.portal-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; }
-.portal-metrics .value { overflow-wrap: anywhere; font-size: clamp(22px,2.1vw,28px); }
-.portal-metrics .label { text-transform: uppercase; letter-spacing: .045em; font-size: 11px; font-weight: 750; }
+.portal-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; margin: 0; padding: 20px 0; border-block: 1px solid var(--border); }
+.portal-metric { padding: 4px 24px; border-left: 1px solid var(--border); min-width: 0; }
+.portal-metric:first-child { border-left: 0; padding-left: 0; }
+.portal-metric dt { color: var(--muted); font-size: 12px; font-weight: 600; }
+.portal-metric dd { margin: 8px 0 4px; font-size: clamp(22px,2.1vw,28px); font-weight: 750; overflow-wrap: anywhere; }
+.portal-metric small { color: var(--muted); font-size: 12px; }
+.payment-context { margin: -8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.8; }
+.payment-context span { padding: 0 8px; }
+.payment-context a { margin-left: 10px; white-space: nowrap; }
+.collection-overview { background: #fff; border-block: 1px solid var(--border); padding: 26px 28px 18px; }
+.collection-period { font-size: 10px; letter-spacing: .1em; color: var(--muted); margin: 0 0 9px; font-weight: 650; }
+.collection-overview h2 { margin: 0; }
+.collection-percentage { color: var(--brand2); font-size: 13px; font-weight: 700; }
+.collection-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 35px; align-items: center; }
+.collection-primary { min-width: 0; }
+.collection-overview .collection-amount { margin: 12px 0 20px; line-height: 1.7; }
+.collection-overview .collection-amount strong { font-size: clamp(26px,3vw,36px); }
+.collection-overview .collection-amount span { font-size: 14px; }
+.collection-overview .collection-progress { height: 8px; }
+.collection-balances { margin: 12px 0; padding-left: 30px; border-left: 1px solid var(--border); display: grid; gap: 20px; }
+.collection-balances div { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+.collection-balances dt { color: var(--muted); font-size: 13px; }
+.collection-balances dd { margin: 0; font-size: 20px; font-weight: 650; overflow-wrap: anywhere; }
+.collection-bottom { border-top: 1px solid var(--border); margin-top: 17px; padding-top: 16px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--muted); }
+.collection-bottom a { font-weight: 650; }
+@media(max-width:1100px) {
+  .portal-metric { padding: 16px 20px; }
+  .portal-metric:nth-child(odd) { border-left: 0; padding-left: 0; }
+  .collection-layout { grid-template-columns: 1fr; gap: 6px; }
+  .collection-balances { border-left: 0; border-top: 1px solid var(--border); padding: 18px 0 0; grid-template-columns: 1fr 1fr; gap: 25px; }
+  .collection-balances div { display: block; }.collection-balances dd { margin-top: 7px; }
+}
+@media(max-width:520px) {
+  .collection-overview { padding: 22px 16px 16px; }
+  .collection-balances { gap: 14px; }.collection-balances dd { font-size: 18px; }
+  .payment-context a { display: block; margin-left: 0; }
+  .portal-metric { padding-right: 12px; }
+}
 .group-card-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
 .group-snapshot h2 { overflow-wrap: anywhere; }
 .portal-attention { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); text-decoration: none; }

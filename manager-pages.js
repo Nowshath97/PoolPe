@@ -10,7 +10,7 @@ function emptyManagerGroups() {
 }
 
 function portalMetrics(items) {
-  return `<div class="portal-metrics">${items.map(([label, value, detail = '']) => `<div class="card metric"><div class="label">${escapeHtml(label)}</div><div class="value">${value}</div><div class="sub">${escapeHtml(detail)}</div></div>`).join('')}</div>`;
+  return `<dl class="portal-metrics" aria-label="Summary">${items.map(([label, value, detail = '']) => `<div class="portal-metric"><dt>${escapeHtml(label)}</dt><dd>${value}</dd>${detail ? `<small>${escapeHtml(detail)}</small>` : ''}</div>`).join('')}</dl>`;
 }
 
 function groupRouteLink(g, tab = 'overview', text = 'Open Group →') {
@@ -67,7 +67,7 @@ function renderGroupsPage(groups) {
 
 function renderGroupWorkspace(s, tab) {
   const views = {
-    overview: () => `${renderGroupStart(s)}${renderSummaryCards(s)}${renderCollectionProgress(s)}<div class="manager-grid">${renderBidCard(s)}${renderGroupInformation(s)}</div>
+    overview: () => `${renderGroupStart(s)}${renderCollectionProgress(s)}<div class="manager-grid">${renderBidCard(s)}${renderGroupInformation(s)}</div>
       <div class="toolbar"><button class="btn primary" onclick="modal('memberModal')">+ Add Member</button><button class="btn secondary" onclick="modal('managerPaymentPicker')" ${!s.started || !s.rows.length ? 'disabled' : ''}>Record Payment</button>${groupRouteLink(s.g, 'bids', 'Manage Bid')}</div>`,
     members: () => renderMemberTable(s),
     payments: () => renderGroupPayments(s),
@@ -81,8 +81,8 @@ function renderGroupWorkspace(s, tab) {
 
 function renderGroupPayments(s) {
   return `<div class="section-title"><h2>Payments · ${escapeHtml(month)}</h2><button class="btn primary" onclick="modal('managerPaymentPicker')" ${!s.started || !s.rows.length ? 'disabled' : ''}>Record Payment</button></div>
-    ${portalMetrics([['Expected',money(s.expected)],['Collected',money(s.collected)],['Outstanding',money(s.pending+s.previousDues),'Includes previous dues'],['Paid members',`${s.paidCount} / ${s.rows.length}`]])}
-    ${renderCollectionProgress(s)}${!s.rows.length ? '<p class="empty">No members have been added yet.</p>' : `<div class="card table-wrap"><table><thead><tr><th>Member</th><th>Paid this month</th><th>Date</th><th>Status</th><th>Outstanding</th><th>Action</th></tr></thead><tbody>${s.rows.map(r => `<tr><td>${escapeHtml(r.m.name)}</td><td>${money(r.paid)}</td><td>${escapeHtml(r.payment?.date || '—')}</td><td><span class="pill ${r.status === 'Paid' ? 'paid' : r.balance ? 'warning' : 'neutral'}">${r.status}</span></td><td>${money(r.balance+r.dues.amount)}</td><td><button class="btn secondary" data-id="${escapeHtml(r.m.id)}" onclick="openPayment(this.dataset.id)" ${!s.started ? 'disabled' : ''}>${r.status === 'Paid' ? 'Edit Payment' : 'Record Payment'}</button>${r.payment?.status === 'Paid' ? `<button class="linkbtn" data-id="${escapeHtml(r.m.id)}" onclick="markPending(this.dataset.id)">Mark Pending</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`}`;
+    <p class="payment-context">${s.paidCount} of ${s.rows.length} members paid <span aria-hidden="true">&middot;</span> ${money(s.pending + s.previousDues)} outstanding, including previous dues. <a href="#/group/${encodeURIComponent(s.g.id)}/overview">View collection summary &rarr;</a></p>
+    ${!s.rows.length ? '<p class="empty">No members have been added yet.</p>' : `<div class="card table-wrap"><table><thead><tr><th>Member</th><th>Paid this month</th><th>Date</th><th>Status</th><th>Outstanding</th><th>Action</th></tr></thead><tbody>${s.rows.map(r => `<tr><td>${escapeHtml(r.m.name)}</td><td>${money(r.paid)}</td><td>${escapeHtml(r.payment?.date || '—')}</td><td><span class="pill ${r.status === 'Paid' ? 'paid' : r.balance ? 'warning' : 'neutral'}">${r.status}</span></td><td>${money(r.balance+r.dues.amount)}</td><td><button class="btn secondary" data-id="${escapeHtml(r.m.id)}" onclick="openPayment(this.dataset.id)" ${!s.started ? 'disabled' : ''}>${r.status === 'Paid' ? 'Edit Payment' : 'Record Payment'}</button>${r.payment?.status === 'Paid' ? `<button class="linkbtn" data-id="${escapeHtml(r.m.id)}" onclick="markPending(this.dataset.id)">Mark Pending</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`}`;
 }
 
 function renderBidHistory(g) {
@@ -91,7 +91,7 @@ function renderBidHistory(g) {
 }
 
 function renderGroupBids(s) {
-  return `<h2>Bids</h2>${portalMetrics([['Current cycle',managerCycleLabel(s)],['Eligible members',s.eligible]])}${renderBidCard(s)}<section class="card"><h2>Bid History</h2>${renderBidHistory(s.g)}</section>`;
+  return `<h2>Bids</h2>${renderBidCard(s)}<section class="card"><h2>Bid History</h2>${renderBidHistory(s.g)}</section>`;
 }
 
 function renderActivityPage(groups) {
