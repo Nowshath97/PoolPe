@@ -5,6 +5,96 @@ const path = require('node:path');
 const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 
+test('monthly balances A-H include multiple rows, excess, allocation dates and post-lift amounts', () => {
+  const {run} = setup();
+  run(`month='2026-10'`);
+  for (const [amounts, status, balance] of [ [[], 'Pending',25000], [[10000],'Partial',15000],
+    [[25000],'Paid',0], [[10000,15000],'Paid',0], [[30000],'Paid',0] ]) {
+    run(`db.payments=${JSON.stringify(amounts.map((amountPaid,i) => ({id:'p'+i, groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid,date:'2026-11-05'})))}`);
+    const row = run('getManagerSummary(db.groups[0]).rows[0]');
+    assert.equal(row.status,status);
+    assert.equal(row.balance,balance);
+    if (!balance) assert.match(run('renderMemberRow(getManagerSummary(db.groups[0]).rows[0])'), /Monthly Amount|No dues/);
+  }
+  run(`db.payments=[{id:'sep',groupId:'g1',memberId:'m0',month:'2026-09',amountDue:25000,amountPaid:10000,date:'2026-10-05'},
+    {id:'oct',groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid:25000}];`);
+  assert.equal(run('duesFor(db.groups[0],db.members[0]).amount'),15000);
+  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].balance'),0);
+  run(`db.payments[1].month='2026-09'`);
+  assert.equal(run('duesFor(db.groups[0],db.members[0]).amount'),0);
+  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].balance'),25000);
+  run(`db.auctions=[{groupId:'g1',winnerMemberId:'m0',liftMonth:1}];`);
+  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].due'),27000);
+  assert.equal(run('buildMemberStatement("g1","m0").rows[0].paid'),35000);
+});
+
+function paymentSetup() {
+  const state = setup();
+  const {run,context,el} = state;
+  for (const id of ['paymentMemberId','paymentMemberInfo','payAmount','payDate','payMode','payReference','payNotes']) context[id]=el(id);
+  run(`month='2026-10'; modal=()=>{}; closeModal=()=>{}; render=()=>{window.renders=(window.renders||0)+1}; toast=text=>{window.notice=text};`);
+  const writes=[];
+  context.supabaseClient={from(table) {
+    let payload, filters=[];
+    const q={insert(p){payload=p;return q},update(p){payload=p;return q},eq(k,v){filters.push([k,v]);return q},
+      select(){return q}, async single(){writes.push({table,payload,filters});return {data:{id:filters.find(([k])=>k==='id')?.[1] || 'new', ...payload}}}};
+    return q;
+  }};
+  return {...state,writes};
+}
+
+test('record and edit save explicit month, scoped row and refresh both old and new balances', async () => {
+  const {run,el,writes,context}=paymentSetup();
+  await run(`openPayment('m0')`);
+  assert.match(el('payMonth').innerHTML,/September 2026/);
+  el('payMonth').value='2026-09';
+  run('updatePaymentContext()');
+  el('payAmount').value='10000';el('payDate').value='2026-10-05';el('payMode').value='Cash';
+  await run('savePayment()');
+  assert.equal(writes[0].payload.month,'2026-09-01');
+  assert.equal(writes[1].payload.allocations[0].month,'2026-09');
+  assert.equal(run('duesFor(db.groups[0],db.members[0]).amount'),15000);
+  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].balance'),25000);
+  el('payRecord').value='new';run('selectPaymentRecord()');
+  el('payMonth').value='2026-10';el('payAmount').value='10000';
+  await run('savePayment()');
+  assert.equal(writes[2].payload.month,'2026-10-01');
+  assert.ok(writes[2].filters.some(([k,v])=>k==='group_id' && v==='g1'));
+  assert.equal(run('duesFor(db.groups[0],db.members[0]).amount'),25000);
+  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].balance'),15000);
+  assert.equal(context.window.renders,2);
+});
+
+test('fully paid months reject duplicate payments; invalid months and setup are excluded', async () => {
+  const {run,el,writes}=paymentSetup();
+  run(`db.payments=[{id:'p',groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid:25000}]`);
+  await run(`openPayment('m0')`);
+  assert.equal(el('payRecord').value,'p');
+  el('payRecord').value='';run('selectPaymentRecord()');
+  el('payAmount').value=25000;el('payMode').value='Cash';
+  await run('savePayment()');
+  assert.equal(writes.length,0);
+  el('payMonth').value='2028-12';
+  await run('savePayment()');
+  assert.equal(writes.length,0);
+  run(`db.groups[0].status='inactive'`);
+  assert.equal(run('validPaymentMonths(db.groups[0]).length'),0);
+});
+
+test('reverse clears every record for selected month and leaves previous month intact', async () => {
+  const {run,context}=paymentSetup();
+  run(`db.payments=[{id:'a',groupId:'g1',memberId:'m0',month:'2026-10',amountPaid:10000,amountDue:25000},
+    {id:'b',groupId:'g1',memberId:'m0',month:'2026-10',amountPaid:15000,amountDue:25000},
+    {id:'c',groupId:'g1',memberId:'m0',month:'2026-09',amountPaid:10000,amountDue:25000}]; confirm=()=>true`);
+  const filters=[];
+  context.supabaseClient={from(){const q={update(){return q},eq(k,v){filters.push([k,v]);return q},async select(){return {data:['a','b'].map(id=>({id,group_id:'g1',member_id:'m0',month:'2026-10-01',amount_paid:0,amount_due:25000,status:'pending'}))}}};return q}};
+  await run(`markPending('m0')`);
+  assert.ok(filters.some(([k,v])=>k==='month' && v==='2026-10-01'));
+  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].status'),'Pending');
+  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].balance'),25000);
+  assert.equal(run('duesFor(db.groups[0],db.members[0]).amount'),15000);
+});
+
 test('statement includes missing months, partial payments and stored due amounts without double counting transactions', () => {
   const { run } = setup();
   run(`month='2026-10'; db.payments=[{groupId:'g1',memberId:'m0',month:'2026-09',amountDue:24000,amountPaid:10000,status:'Partial',reference:'receipt-1'}];

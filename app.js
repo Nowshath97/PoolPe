@@ -943,9 +943,7 @@ function memberStats(g, m) {
       p.memberId === m.id
   );
 
-  const paid = rec.filter(
-    (p) => p.status === "Paid"
-  );
+  const paid = [...new Set(rec.map(p => p.month))].filter(ym => paymentForMonth(g, m, ym).status === 'Paid');
 
   const lift = liftFor(
     g.id,
@@ -2297,6 +2295,11 @@ function mEmailMatches(a, b) {
    ========================================================= */
 
 let paymentSaving = false;
+function contributionMonthLabel(ym) {
+  if (!/^\d{4}-\d{2}$/.test(ym)) return 'Unassigned month';
+  const [year, mm] = ym.split('-').map(Number);
+  return new Date(year, mm - 1, 1).toLocaleDateString('en-IN', {month:'long', year:'numeric'});
+}
 function validPaymentMonths(g) {
   if (!groupHasStarted(g)) return [];
   // Preserve the existing policy: collect elapsed months, with no future advances.
@@ -2318,8 +2321,8 @@ async function openPayment(mid) {
   paymentMemberInfo.innerHTML = `<b>Member: ${escapeHtml(m.name)}</b>`;
   const records = db.payments.filter(p => p.groupId === g.id && p.memberId === mid);
   document.getElementById('payRecord').innerHTML = '<option value="">Record additional payment</option>' + records.map(p =>
-    `<option value="${escapeHtml(p.id)}">Edit ${escapeHtml(p.month)} ? ${money(p.amountPaid)} ? ${escapeHtml(p.date || 'No date')}</option>`).join('');
-  document.getElementById('payMonth').innerHTML = months.map(ym => `<option value="${ym}">${ym}</option>`).join('');
+    `<option value="${escapeHtml(p.id)}">Edit ${escapeHtml(p.month)} &middot; ${money(p.amountPaid)} &middot; ${escapeHtml(p.date || 'No date')}</option>`).join('');
+  document.getElementById('payMonth').innerHTML = months.map(ym => `<option value="${ym}">${escapeHtml(contributionMonthLabel(ym))}</option>`).join('');
   document.getElementById('payMonth').value = months.includes(month) ? month : months.at(-1);
   const summary = paymentForMonth(g, m, month);
   document.getElementById('payRecord').value = summary.status === 'Paid' ? summary.records[0]?.id || '' : '';
@@ -2341,7 +2344,7 @@ function updatePaymentContext() {
   const ym = document.getElementById('payMonth').value;
   const summary = paymentForMonth(g, m, ym);
   const available = paymentForMonth(g, m, ym, p?.id ?? null);
-  document.getElementById('payMonthContext').innerHTML = `<b>${escapeHtml(ym)}</b>
+  document.getElementById('payMonthContext').innerHTML = `<b>${escapeHtml(contributionMonthLabel(ym))}</b>
     <div>Required ${money(summary.due)}</div><div>Already Paid ${money(summary.paid)}</div>
     <div>Remaining ${money(summary.balance)}</div>${summary.balance === 0 ? '<p>This month is fully paid.</p>' : ''}
     ${p ? '<p class="small muted">The amount replaces the selected record. Other payments remain allocated to their months.</p>' : ''}`;
@@ -2379,11 +2382,13 @@ async function savePayment() {
     else db.payments.push(mapPayment(data));
     let receiptWarning = false;
     if (!p) {
+      try {
       const receipt = await supabaseClient.from('transactions').insert({group_id:g.id, member_id:m.id,
         amount:amt, date:payload.date, mode:payload.mode, reference:payload.reference, notes:payload.notes,
         allocations:[{month:ym, amount:amt}]}).select().single();
       if (receipt.error) receiptWarning = true;
       else db.transactions.push(receipt.data);
+      } catch { receiptWarning = true; }
     }
     closeModal('paymentModal');
     render();
@@ -2470,6 +2475,7 @@ function openHistory(mid) {
     " · Payment History";
 
   historyBody.innerHTML = `
+    <p class="small muted">Monthly payment records; amounts may combine multiple receipts. Status reflects all payments for the contribution month. Payment date is the latest recorded date for this record.</p>
     <div class="table-wrap">
 
       <table>

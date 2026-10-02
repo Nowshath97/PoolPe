@@ -117,15 +117,15 @@ function renderCollectionProgress(s) {
       <progress class="collection-progress" max="100" value="${Math.min(100, Math.max(0, s.percent))}" aria-label="Amount collected">${s.percent.toFixed(0)}%</progress>
       <p class="progress-caption">${s.paidCount} of ${s.rows.length} members fully paid</p>
     </div><dl class="collection-balances"><div><dt>Remaining this month</dt><dd>${money(s.pending)}</dd></div><div><dt>Previous dues</dt><dd>${money(s.previousDues)}</dd></div></dl></div>
-    <div class="collection-bottom"><span>Payments allocated to ${escapeHtml(month)}. Previous dues are separate.</span><a href="#/group/${encodeURIComponent(s.g.id)}/payments">Manage payments &rarr;</a></div></section>`;
+    <div class="collection-bottom"><span>Payments allocated to ${escapeHtml(month)}. Previous dues are separate.</span><a href="#/group/${encodeURIComponent(s.g.id)}/payments">Manage payments <svg class="line-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a></div></section>`;
 }
 
 function renderNeedsAttention(s) {
   if (!s.started) return `<section class="card"><h2>Group Setup</h2><p>${s.rows.length} of ${MAX_GROUP_MEMBERS} members joined.</p><p class="muted">${groupNeedsStart(s.g) ? 'Complete the group and confirm its start month.' : `Scheduled to start in ${escapeHtml(s.g.start.slice(0, 7))}.`}</p></section>`;
   const items = [];
-  if (s.pendingCount) items.push(`<button class="attention-item" onclick="setManagerFilter('pending', true)"><span><b>${s.pendingCount} payments pending</b><small>Review this month's outstanding payments</small></span><strong>${money(s.pending)} &rsaquo;</strong></button>`);
-  if (s.duesCount) items.push(`<button class="attention-item" onclick="setManagerFilter('dues', true)"><span><b>${s.duesCount} members have previous dues</b><small>Unpaid balances from earlier cycles</small></span><strong>${money(s.previousDues)} &rsaquo;</strong></button>`);
-  if (!s.auction && s.inCycle && s.eligible) items.push(`<button class="attention-item" onclick="openAuction()"><span><b>This month's bid is not recorded</b><small>${s.eligible} eligible members</small></span><strong>Record &rsaquo;</strong></button>`);
+  if (s.pendingCount) items.push(`<button class="attention-item" onclick="setManagerFilter('pending', true)"><span><b>${s.pendingCount} payments pending</b><small>Review this month's outstanding payments</small></span><strong>${money(s.pending)} <svg class="line-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></strong></button>`);
+  if (s.duesCount) items.push(`<button class="attention-item" onclick="setManagerFilter('dues', true)"><span><b>${s.duesCount} members have previous dues</b><small>Unpaid balances from earlier cycles</small></span><strong>${money(s.previousDues)} <svg class="line-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></strong></button>`);
+  if (!s.auction && s.inCycle && s.eligible) items.push(`<button class="attention-item" onclick="openAuction()"><span><b>This month's bid is not recorded</b><small>${s.eligible} eligible members</small></span><strong>Record <svg class="line-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></strong></button>`);
   return `<section class="card attention-card"><div class="section-title"><h2>Needs Attention</h2><span class="attention-dot" aria-hidden="true"></span></div>
     ${!s.pendingCount && !s.duesCount && s.rows.length ? '<p class="success-note">All payments are up to date &#10003;</p>' : ''}
     ${items.join('') || (!s.rows.length ? '<p class="muted">Add members to begin tracking collections.</p>' : '<p class="muted">Nothing needs your attention.</p>')}</section>`;
@@ -179,7 +179,7 @@ function renderActivityItems(events) {
 
 function renderRecentActivity(s) {
   const events = getManagerActivity(s);
-  return `<section class="card"><div class="section-title"><h2>Recent Activity</h2>${events.length > 4 ? '<button class="linkbtn" onclick="modal(\'managerActivity\')">View all activity &rarr;</button>' : ''}</div>${renderActivityItems(events.slice(0, 4))}</section>`;
+  return `<section class="card"><div class="section-title"><h2>Recent Activity</h2>${events.length > 4 ? '<button class="linkbtn" onclick="modal(\'managerActivity\')">View all activity <svg class="line-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button>' : ''}</div>${renderActivityItems(events.slice(0, 4))}</section>`;
 }
 
 function memberMatchesSearch(name, term) {

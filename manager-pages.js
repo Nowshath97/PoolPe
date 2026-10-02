@@ -13,7 +13,7 @@ function portalMetrics(items) {
   return `<dl class="portal-metrics" aria-label="Summary">${items.map(([label, value, detail = '']) => `<div class="portal-metric"><dt>${escapeHtml(label)}</dt><dd>${value}</dd>${detail ? `<small>${escapeHtml(detail)}</small>` : ''}</div>`).join('')}</dl>`;
 }
 
-function groupRouteLink(g, tab = 'overview', text = 'Open Group →') {
+function groupRouteLink(g, tab = 'overview', text = 'Open Group <svg class="line-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg>') {
   return `<a class="btn secondary" href="#/group/${encodeURIComponent(g.id)}/${tab}">${text}</a>`;
 }
 
@@ -57,7 +57,7 @@ function renderGroupWorkspace(s, tab) {
 
 function renderGroupPayments(s) {
   return `<div class="section-title"><h2>Payments · ${escapeHtml(month)}</h2><div class="toolbar">${pendingReminderButton(s)}<button class="btn primary" onclick="modal('managerPaymentPicker')" ${!s.started || !s.rows.length ? 'disabled' : ''}>Record Payment</button></div></div>
-    <p class="payment-context">${s.paidCount} of ${s.rows.length} members paid <span aria-hidden="true">&middot;</span> ${money(s.pending + s.previousDues)} outstanding, including previous dues. <a href="#/group/${encodeURIComponent(s.g.id)}/overview">View collection summary &rarr;</a></p>
+    <p class="payment-context">${s.paidCount} of ${s.rows.length} members paid <span aria-hidden="true">&middot;</span> ${money(s.pending + s.previousDues)} outstanding, including previous dues. <a href="#/group/${encodeURIComponent(s.g.id)}/overview">View collection summary <svg class="line-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a></p>
     ${!s.rows.length ? '<p class="empty">No members have been added yet.</p>' : `<div class="card table-wrap"><table><thead><tr><th>Member</th><th>Paid this month</th><th>Date</th><th>Status</th><th>Outstanding</th><th>Action</th></tr></thead><tbody>${s.rows.map(r => `<tr><td>${escapeHtml(r.m.name)}</td><td>${money(r.paid)}</td><td>${escapeHtml(r.payment?.date || '—')}</td><td><span class="pill ${r.status === 'Paid' ? 'paid' : r.balance ? 'warning' : 'neutral'}">${r.status}</span></td><td>${money(r.balance+r.dues.amount)}</td><td><div class="payment-row-actions"><button class="btn secondary" data-id="${escapeHtml(r.m.id)}" onclick="openPayment(this.dataset.id)" ${!s.started ? 'disabled' : ''}>${r.status === 'Paid' ? 'Edit Payment' : 'Record Payment'}</button><button class="reminder-button" data-group="${escapeHtml(s.g.id)}" data-id="${escapeHtml(r.m.id)}" onclick="openMemberReminder(this.dataset.group,this.dataset.id)" title="Prepare a WhatsApp reminder"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4M12 2V1"/></svg><span>Remind</span></button>${r.paid > 0 ? `<button class="linkbtn" data-id="${escapeHtml(r.m.id)}" onclick="markPending(this.dataset.id)">Mark Pending</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`}`;
 }
 
@@ -99,7 +99,7 @@ function renderReportsPage(groups) {
     const views = {
       collections: () => portalMetrics([['Expected',money(s.expected)],['Collected',money(s.collected)],['Pending',money(s.pending)]]),
       dues: () => s.rows.some(r => r.balance+r.dues.amount > 0) ? `<ul class="report-list">${s.rows.filter(r => r.balance+r.dues.amount > 0).map(r => `<li><span>${escapeHtml(r.m.name)}</span><b>${money(r.balance+r.dues.amount)}</b></li>`).join('')}</ul><p class="small muted">Includes current balances and previous dues.</p>` : '<p class="success-note">All payments are up to date ✓</p>',
-      statements: () => s.rows.length ? `<ul class="report-list">${s.rows.map(r => `<li><span>${escapeHtml(r.m.name)}</span><button class="linkbtn" data-group="${escapeHtml(g.id)}" data-member="${escapeHtml(r.m.id)}" onclick="openPortalStatement(this.dataset.group,this.dataset.member)">View statement →</button></li>`).join('')}</ul>` : '<p>No members have been added yet.</p>',
+      statements: () => s.rows.length ? `<ul class="report-list">${s.rows.map(r => `<li><span>${escapeHtml(r.m.name)}</span><button class="linkbtn" data-group="${escapeHtml(g.id)}" data-member="${escapeHtml(r.m.id)}" onclick="openPortalStatement(this.dataset.group,this.dataset.member)">View statement <svg class="line-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button></li>`).join('')}</ul>` : '<p>No members have been added yet.</p>',
       bids: () => renderBidHistory(g),
       commission: () => `<p class="big">${g.commission ?? 4}%</p><p class="muted">Configured commission rate, informational only. Commission receipts are not tracked.</p>`
     };
@@ -115,5 +115,5 @@ function openPortalStatement(groupId, memberId) {
 }
 
 function renderAccountSettings(u) {
-  return portalHeading('Settings', 'Your manager account.') + `<section class="card"><h2>Profile</h2><dl class="group-facts"><div><dt>Name</dt><dd>${escapeHtml(u.name)}</dd></div><div><dt>Email</dt><dd>${escapeHtml(u.email || 'Not provided')}</dd></div><div><dt>Role</dt><dd>${escapeHtml(u.role)}</dd></div></dl><p class="small muted">Group configuration is available under Groups → Open Group → Settings.</p></section>`;
+  return portalHeading('Settings', 'Your manager account.') + `<section class="card"><h2>Profile</h2><dl class="group-facts"><div><dt>Name</dt><dd>${escapeHtml(u.name)}</dd></div><div><dt>Email</dt><dd>${escapeHtml(u.email || 'Not provided')}</dd></div><div><dt>Role</dt><dd>${escapeHtml(u.role)}</dd></div></dl><p class="small muted">Group configuration is available under Groups <svg class="line-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg> Open Group <svg class="line-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg> Settings.</p></section>`;
 }
