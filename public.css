@@ -1,6 +1,8 @@
 #loginPage{
   display:none;
   min-height:100vh;
+  min-height:100dvh;
+  grid-template-rows:auto 1fr;
   background:
     radial-gradient(
       circle at 75% 80%,
@@ -11,7 +13,7 @@
 }
 
 .login-top{
-  padding:28px 5%;
+  padding:12px clamp(16px,5vw,64px);
   display:flex;
   justify-content:space-between;
   align-items:center
@@ -20,18 +22,21 @@
 .login-wrap{
   display:grid;
   place-items:center;
-  padding:35px 20px 90px
+  padding:16px 20px 32px
 }
 
 .login-card{
-  width:min(480px,94vw);
+  width:min(420px,100%);
   background:#fff;
   border-radius:18px;
-  padding:45px;
+  padding:30px;
   box-shadow:0 15px 55px #183b4316
 }
 
 .login-card h1{
+  font-size:30px;
+  line-height:1.2;
+  letter-spacing:-.025em;
   text-align:center;
   margin:0 0 7px
 }
@@ -39,7 +44,8 @@
 .login-card>p{
   text-align:center;
   color:var(--muted);
-  margin:0 0 32px
+  margin:0 0 24px;
+  font-size:14px
 }
 
 .field{
@@ -118,3 +124,24 @@
 
 /* Darker teal keeps small text legible on tinted surfaces. */
 .status,.tag,.calculator .eyebrow{color:#06665d}
+
+/* Keep authentication sizing independent of the marketing page typography. */
+#loginPage .login-brand-logo{width:136px;height:48px}
+#loginPage .field{margin-bottom:16px}
+#loginPage .field input{padding:11px 12px;font-size:16px;min-height:44px}
+#loginPage .row{align-items:center;flex-wrap:wrap;gap:10px;margin:4px 0 20px}
+#loginPage .row label{display:inline-flex;align-items:center;gap:6px}
+#loginPage .admin{margin-top:20px;font-size:13px}
+#loginPage .admin a{margin-left:5px}
+#loginPage .login-error{color:#b42318;text-align:left;margin-bottom:16px}
+@media(max-width:480px){
+  #loginPage .login-top{gap:12px}
+  #loginPage .back{font-size:12px}
+  #loginPage .login-wrap{padding:12px 16px 24px}
+  #loginPage .login-card{padding:26px 22px}
+  #loginPage .login-card h1{font-size:28px}
+}
+@media(max-height:650px){
+  #loginPage .login-wrap{align-items:start;padding-top:8px;padding-bottom:16px}
+  #loginPage .login-top{padding-top:8px;padding-bottom:8px}
+}
