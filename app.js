@@ -1835,7 +1835,7 @@ function modals() {
       <div class="dialog payment-dialog">
         <header class="payment-dialog-header">
           <div><h3 id="paymentModalTitle">Record Payment</h3>
-          <p class="muted small">Choose a contribution month and record the payment received.</p></div>
+          <p class="muted small">Enter the amount received and review the months covered.</p></div>
           <button class="payment-close" type="button" aria-label="Close payment dialog" onclick="closeModal('paymentModal')">&times;</button>
         </header>
         <div class="payment-dialog-body">
@@ -1851,12 +1851,12 @@ function modals() {
           id="paymentMemberId"
           type="hidden">
 
-        <div class="field"><label for="payRecord">Payment record</label>
-          <select id="payRecord" onchange="selectPaymentRecord()"></select>
-          <p class="small muted">Select an existing record to edit its total.</p></div>
+        <input id="payRecord" type="hidden">
+        <details id="payAllocationControls" class="payment-disclosure"><summary>Adjust allocation</summary>
         <div class="field"><label id="payMonthLabel" for="payMonth">Pay dues through *</label>
           <select id="payMonth" required onchange="updatePaymentContext()"></select></div>
         <div class="field"><label for="payAllocationOrder">Apply payment</label><select id="payAllocationOrder" onchange="updatePaymentAllocation()"><option value="oldest">Oldest unpaid month first</option><option value="selected">Selected month first, then earlier dues</option></select></div>
+        </details>
         <div id="payMonthContext" class="info-box" aria-live="polite"></div>
         <div id="payAllocationPreview" aria-live="polite"></div>
         </section>
@@ -1908,6 +1908,8 @@ function modals() {
           </select>
         </div>
 
+        </div>
+        <details id="payOptionalDetails" class="payment-disclosure"><summary>Reference and notes (optional)</summary>
         <div class="field">
           <label for="payReference">
             Reference
@@ -1928,7 +1930,7 @@ function modals() {
           </textarea>
         </div>
 
-        </div>
+        </details>
         </section>
         </div>
         </div>
@@ -1943,9 +1945,9 @@ function modals() {
           </button>
 
           <button
-            class="btn primary"
+            id="paymentSaveButton" class="btn primary"
             onclick="savePayment()">
-            Record Payment
+            Save Payment
           </button>
 
         </footer>
@@ -2331,20 +2333,33 @@ async function openPayment(mid, preferOutstanding = false) {
   if (!months.length) return toast('Payments begin from the confirmed chit start month.');
   paymentMemberId.value = mid;
   paymentMemberInfo.innerHTML = `<b>Member: ${escapeHtml(m.name)}</b>`;
-  const receiptMonths = new Set(db.transactions.filter(t => t.group_id === g.id && t.member_id === mid && Array.isArray(t.allocations) && t.allocations.length > 1).flatMap(t => t.allocations.map(a => String(a.month).slice(0,7))));
-  const records = db.payments.filter(p => p.groupId === g.id && p.memberId === mid && !receiptMonths.has(p.month));
-  document.getElementById('payRecord').innerHTML = '<option value="">Record additional payment</option>' + records.map(p =>
-    `<option value="${escapeHtml(p.id)}">Edit ${escapeHtml(p.month)} &middot; ${money(p.amountPaid)} &middot; ${escapeHtml(p.date || 'No date')}</option>`).join('');
+  document.getElementById('payRecord').value = '';
+  document.getElementById('payAllocationOrder').value = 'oldest';
+  document.getElementById('payAllocationControls').open = false;
+  document.getElementById('payOptionalDetails').open = false;
+  document.getElementById('paymentModalTitle').textContent = 'Record Payment';
+  document.getElementById('paymentSaveButton').textContent = 'Save Payment';
   document.getElementById('payMonth').innerHTML = months.map(ym => `<option value="${ym}">${escapeHtml(contributionMonthLabel(ym))}</option>`).join('');
-  const selectedMonth = month;
-  document.getElementById('payMonth').value = months.includes(selectedMonth) ? selectedMonth : months.at(-1);
-  const summary = paymentForMonth(g, m, document.getElementById('payMonth').value);
-  document.getElementById('payRecord').value = summary.status === 'Paid' ? records.find(p => p.month === selectedMonth)?.id || '' : '';
-  document.getElementById('payRecord').innerHTML += db.transactions.filter(t => t.group_id === g.id && t.member_id === mid && Array.isArray(t.allocations) && t.allocations.length > 0).map(t => `<option value="receipt:${escapeHtml(t.id)}">Edit receipt ? ${money(t.amount)} ? ${escapeHtml(t.date || '')}</option>`).join('');
-  if (preferOutstanding && months.some(ym => paymentForMonth(g, m, ym).balance > 0)) document.getElementById('payRecord').value = '';
+  document.getElementById('payMonth').value = months.at(-1);
   selectPaymentRecord();
   modal('paymentModal');
 }
+async function openPaymentEdit(mid, key) {
+  const g = db.groups.find(g => g.id === activeGroup);
+  if (!g || g.managerId !== currentUser()?.id) return toast('Payment unavailable.');
+  const receipt = db.transactions.find(t => `receipt:${t.id}` === key && t.group_id === g.id && t.member_id === mid && Array.isArray(t.allocations));
+  const legacy = db.payments.find(p => p.id === key && p.groupId === g.id && p.memberId === mid);
+  if (!receipt && !legacy) return toast('Payment unavailable.');
+  await openPayment(mid);
+  if (paymentMemberId.value !== mid || !validPaymentMonths(g).length) return;
+  document.getElementById('payRecord').value = key;
+  closeModal('historyModal');
+  selectPaymentRecord();
+  document.getElementById('paymentModalTitle').textContent = receipt ? 'Edit Payment' : 'Edit legacy payment';
+  document.getElementById('paymentSaveButton').textContent = 'Save Changes';
+  document.getElementById('payOptionalDetails').open = !!(payReference.value || payNotes.value);
+}
+
 function paymentAllocationPlan(amount = Number(payAmount.value)) {
   const {g, m, p, receipt} = paymentFormData();
   const through = document.getElementById('payMonth').value;
@@ -2365,7 +2380,8 @@ function paymentAllocationPlan(amount = Number(payAmount.value)) {
 function updatePaymentAllocation() {
   const plan = paymentAllocationPlan();
   const rows = plan.rows.filter(r => r.balance > 0);
-  document.getElementById('payAllocationPreview').innerHTML = `<p class="small muted">${plan.original.length ? 'Replaces the selected payment. ' : ''}One payment, allocated across these months.</p><dl class="payment-allocation-list">${rows.map(r => `<div><dt>${escapeHtml(contributionMonthLabel(r.month))}<small class="cell-detail">${money(r.balance)} outstanding</small></dt><dd>${money(r.amount)}</dd></div>`).join('')}</dl>${plan.remaining > 0 ? `<p class="due-text" role="status">${money(plan.remaining)} exceeds dues through the selected month. Choose a later month or reduce the amount.</p>` : ''}`;
+  const covered = rows.filter(r => r.amount > 0).map(r => contributionMonthLabel(r.month)).join(' + ');
+  document.getElementById('payAllocationPreview').innerHTML = `<p><b>${covered ? `Covers ${escapeHtml(covered)}` : 'No months covered'}</b></p><p class="small muted">${plan.original.length ? 'Replaces the selected payment. ' : ''}One payment, allocated across these months.</p><dl class="payment-allocation-list">${rows.map(r => `<div><dt>${escapeHtml(contributionMonthLabel(r.month))}<small class="cell-detail">${money(r.balance)} outstanding</small></dt><dd>${money(r.amount)}</dd></div>`).join('')}</dl>${plan.remaining > 0 ? `<p class="due-text" role="status">${money(plan.remaining)} exceeds dues through the selected month. Choose a later month or reduce the amount.</p>` : ''}`;
 }
 function selectPaymentRecord() {
   const {p, receipt} = paymentFormData();
@@ -2375,14 +2391,14 @@ function selectPaymentRecord() {
   payMode.value = record?.mode || '';
   payReference.value = record?.reference || '';
   payNotes.value = record?.notes || '';
-  updatePaymentContext();
+  updatePaymentContext(true);
   if (record) payAmount.value = receipt ? receipt.amount : p.amountPaid;
   updatePaymentAllocation();
 }
-function updatePaymentContext() {
+function updatePaymentContext(resetAmount = false) {
   const plan = paymentAllocationPlan(0);
   document.getElementById('payMonthContext').innerHTML = `<b>Dues through ${escapeHtml(contributionMonthLabel(document.getElementById('payMonth').value))}</b><div>Total available to pay ${money(plan.total)}</div>`;
-  payAmount.value = plan.total;
+  if (resetAmount) payAmount.value = plan.total;
   updatePaymentAllocation();
 }
 async function savePayment() {
@@ -2441,7 +2457,7 @@ async function savePayment() {
 async function saveAllocatedPayment(g, m, p, receipt, plan, allocations, amount) {
   paymentSaving = true;
   try {
-    const months = [...new Set([...plan.rows.map(r => r.month), ...plan.original.map(a => String(a.month).slice(0,7))])];
+    const months = [...new Set([...allocations.map(r => r.month), ...plan.original.map(a => String(a.month).slice(0,7))])];
     const balances = months.map(ym => ({month:ym, ...paymentForMonth(g,m,ym)})).map(r => ({month:r.month, due:r.due, paid:r.paid}));
     const {data, error} = await supabaseClient.rpc('save_allocated_payment', {
       p_group:g.id, p_member:m.id, p_payment:p?.id || null, p_receipt:receipt?.id || null,
@@ -2510,117 +2526,28 @@ function openDues(mid) {
    PAYMENT HISTORY
    ========================================================= */
 
+function memberPaymentHistory(m) {
+  const receipts = db.transactions.filter(t => t.group_id === m.groupId && t.member_id === m.id);
+  const covered = new Set(receipts.flatMap(t => Array.isArray(t.allocations) ? t.allocations.map(a => String(a.month).slice(0,7)) : []));
+  const rows = receipts.map(t => ({ key:`receipt:${t.id}`, amount:Number(t.amount || 0), date:t.date || '', mode:t.mode || '',
+    label:Array.isArray(t.allocations) ? t.allocations.map(a => contributionMonthLabel(String(a.month).slice(0,7))).join(' + ') : 'Payment receipt',
+    editable:Array.isArray(t.allocations) && t.allocations.length > 0, legacy:false }));
+  for (const p of db.payments.filter(p => p.groupId === m.groupId && p.memberId === m.id && p.amountPaid > 0 && !covered.has(p.month))) {
+    rows.push({key:p.id, amount:p.amountPaid, date:p.date || '', mode:p.mode || '', label:contributionMonthLabel(p.month), editable:true, legacy:true});
+  }
+  return rows.sort((a,b) => b.date.localeCompare(a.date));
+}
 function openHistory(mid) {
-  const m =
-    db.members.find(
-      (m) => m.id === mid
-    );
-
-  const records =
-    db.payments
-      .filter(
-        (p) =>
-          p.groupId ===
-            m.groupId &&
-          p.memberId === mid
-      )
-      .sort(
-        (a, b) =>
-          b.month.localeCompare(
-            a.month
-          )
-      );
-
-  historyTitle.textContent =
-    m.name +
-    " · Payment History";
-
-  historyBody.innerHTML = `
-    <p class="small muted">Monthly payment records; amounts may combine multiple receipts. Status reflects all payments for the contribution month. Payment date is the latest recorded date for this record.</p>
-    <div class="table-wrap">
-
-      <table>
-
-        <thead>
-          <tr>
-            <th>Contribution Month</th>
-            <th>Required</th>
-            <th>Paid</th>
-            <th>Status</th>
-            <th>Payment Date</th>
-            <th>Mode</th>
-          </tr>
-        </thead>
-
-        <tbody>
-
-          ${records
-            .map(
-              (p) => `
-                <tr>
-
-                  <td>
-                    ${p.month}
-                  </td>
-
-                  <td>
-                    ${money(
-                      p.amountDue
-                    )}
-                  </td>
-
-                  <td>
-                    ${
-                      Number(
-                        p.amountPaid ||
-                          0
-                      ) > 0
-                        ? money(
-                            p.amountPaid
-                          )
-                        : "—"
-                    }
-                  </td>
-
-                  <td>
-
-                    <span
-                      class="pill ${
-                        p.status ===
-                        "Paid"
-                          ? "paid"
-                          : "pending"
-                      }">
-
-                      ${paymentForMonth(db.groups.find(g => g.id === m.groupId), m, p.month).status}
-
-                    </span>
-
-                  </td>
-
-                  <td>
-                    ${p.date || "—"}
-                  </td>
-
-                  <td>
-                    ${p.mode || "—"}
-                  </td>
-
-                </tr>
-              `
-            )
-            .join("")}
-
-        </tbody>
-
-      </table>
-
-    </div>
-  `;
-
-  modal(
-    "historyModal"
-  );
+  const m = db.members.find(m => m.id === mid);
+  const g = db.groups.find(g => g.id === m?.groupId);
+  if (!m || !g) return toast('Member unavailable.');
+  const canEdit = g.managerId === currentUser()?.id && g.id === activeGroup;
+  const rows = memberPaymentHistory(m);
+  historyTitle.textContent = m.name + ' - Payment History';
+  historyBody.innerHTML = `<p class="small muted">Each receipt appears once. Older monthly totals appear when no allocated receipt is available.</p>
+    <div class="table-wrap"><table><thead><tr><th>Months covered</th><th>Amount</th><th>Date</th><th>Mode</th>${canEdit ? '<th>Actions</th>' : ''}</tr></thead>
+    <tbody>${rows.map(r => `<tr><td>${escapeHtml(r.label)}${r.legacy ? '<small class="cell-detail">Legacy monthly total</small>' : ''}</td><td>${money(r.amount)}</td><td>${escapeHtml(r.date || 'No date')}</td><td>${escapeHtml(r.mode || 'Not recorded')}</td>${canEdit ? `<td>${r.editable ? `<button class="btn secondary" data-member="${escapeHtml(mid)}" data-key="${escapeHtml(r.key)}" onclick="openPaymentEdit(this.dataset.member,this.dataset.key)">Edit</button>` : ''}</td>` : ''}</tr>`).join('') || `<tr><td colspan="${canEdit ? 5 : 4}">No payments recorded.</td></tr>`}</tbody></table></div>`;
+  modal('historyModal');
 }
 
 /* =========================================================

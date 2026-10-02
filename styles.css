@@ -47,3 +47,8 @@ textarea{font:inherit}.field textarea{width:100%;padding:10px;border:1px solid #
 .payment-allocation-list > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .payment-allocation-list dd { margin: 0; font-weight: 700; white-space: nowrap; }
 .payment-allocation-list small { display: block; color: var(--muted); margin-top: 3px; }
+
+.payment-disclosure { margin: 0 0 16px; }
+.payment-disclosure summary { color: var(--brand); cursor: pointer; font-size: 13px; font-weight: 700; padding: 8px 0; }
+.payment-disclosure[open] summary { margin-bottom: 10px; }
+.payment-disclosure .field:last-child { margin-bottom: 0; }

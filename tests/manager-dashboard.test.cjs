@@ -69,7 +69,7 @@ test('fully paid months reject duplicate payments; invalid months and setup are 
   const {run,el,writes}=paymentSetup();
   run(`db.payments=[{id:'p',groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid:25000},{id:'sep',groupId:'g1',memberId:'m0',month:'2026-09',amountDue:25000,amountPaid:25000}]`);
   await run(`openPayment('m0')`);
-  assert.equal(el('payRecord').value,'p');
+  assert.equal(el('payRecord').value,'');
   el('payRecord').value='';run('selectPaymentRecord()');
   el('payAmount').value=25000;el('payMode').value='Cash';
   await run('savePayment()');
@@ -590,7 +590,7 @@ test('one receipt covers two months, previews partial allocation and rejects exc
 test('legacy excess is redistributed, month priority is adjustable, RPC failure preserves balances', async () => {
   const {run,el,context}=paymentSetup();
   run("db.payments=[{id:'legacy',groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid:50000}]");
-  await run("openPayment('m0')");
+  await run("openPaymentEdit('m0','legacy')");
   assert.equal(el('payRecord').value,'legacy');
   assert.deepEqual(JSON.parse(run('JSON.stringify(paymentAllocationPlan().rows.map(r=>r.amount))')),[25000,25000]);
   el('payAllocationOrder').value='selected';el('payAmount').value=30000;
@@ -600,4 +600,30 @@ test('legacy excess is redistributed, month priority is adjustable, RPC failure 
   assert.equal(run('db.payments[0].amountPaid'),50000);
   assert.match(context.window.notice,/Balances changed/);
   assert.equal(run('paymentSaving'),false);
+});
+
+
+test('record form resets editing and hides advanced controls; history shows each receipt once', async () => {
+  const {run,el,context}=paymentSetup();
+  context.historyTitle=el('historyTitle');context.historyBody=el('historyBody');
+  run(`db.payments=[{id:'oct',groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid:25000},
+    {id:'old',groupId:'g1',memberId:'m0',month:'2026-09',amountDue:25000,amountPaid:10000}];
+    db.transactions=[{id:'r1',group_id:'g1',member_id:'m0',amount:25000,date:'2026-10-02',mode:'Cash',allocations:[{month:'2026-10',amount:25000}]}];`);
+  await run("openPayment('m0')");
+  assert.equal(el('payRecord').value,'');assert.equal(el('payAllocationControls').open,false);
+  assert.equal(el('payOptionalDetails').open,false);
+  run("openHistory('m0')");
+  assert.equal(run('memberPaymentHistory(db.members[0]).length'),2);
+  assert.match(el('historyBody').innerHTML,/receipt:r1/);
+  assert.doesNotMatch(el('historyBody').innerHTML,/data-key="oct"/);
+  await run("openPaymentEdit('m0','receipt:r1')");
+  assert.equal(el('paymentModalTitle').textContent,'Edit Payment');
+  assert.equal(el('payAmount').value,25000);
+  el('payAmount').value=12000;el('payMonth').value='2026-09';run('updatePaymentContext()');
+  assert.equal(el('payAmount').value,12000);
+  await run("openPayment('m0')");assert.equal(el('payRecord').value,'');
+  const html=run('renderMemberRow(getManagerSummary(db.groups[0]).rows[0])');
+  assert.match(html,/openPayment\(this.dataset.id\)/);
+  run("db.payments[1].amountPaid=25000");
+  assert.match(run('renderMemberRow(getManagerSummary(db.groups[0]).rows[0])'),/onclick="openHistory\(this.dataset.id\)"/);
 });
