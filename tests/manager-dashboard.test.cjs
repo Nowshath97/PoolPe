@@ -5,6 +5,57 @@ const path = require('node:path');
 const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 
+test('statement includes missing months, partial payments and stored due amounts without double counting transactions', () => {
+  const { run } = setup();
+  run(`month='2026-10'; db.payments=[{groupId:'g1',memberId:'m0',month:'2026-09',amountDue:24000,amountPaid:10000,status:'Partial',reference:'receipt-1'}];
+    db.transactions=[{group_id:'g1',member_id:'m0',amount:10000}];`);
+  const s = run(`buildMemberStatement('g1','m0')`);
+  assert.equal(s.rows.length, 2);
+  assert.equal(s.totals.due, 49000);
+  assert.equal(s.totals.paid, 10000);
+  assert.equal(s.totals.balance, 39000);
+  assert.equal(s.rows[0].status, 'Partial');
+  assert.equal(s.rows[1].status, 'Unpaid');
+  assert.match(run(`renderMemberStatement(buildMemberStatement('g1','m0'))`), /receipt-1/);
+});
+
+test('statement respects ownership, membership, selected period and escaped text', () => {
+  const { run } = setup();
+  run(`db.groups.push({...db.groups[0],id:'private',managerId:'other'});
+    db.members.push({id:'private-member',groupId:'private',name:'Private'});
+    db.members[0].name='<img src=x onerror=alert(1)>';
+    db.payments=[{groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid:25000}];`);
+  assert.equal(run(`buildMemberStatement('private','private-member')`), null);
+  assert.equal(run(`buildMemberStatement('g1','private-member')`), null);
+  assert.equal(run(`buildMemberStatement('g1','m0').totals.paid`), 0);
+  assert.match(run(`renderMemberStatement(buildMemberStatement('g1','m0'))`), /&lt;img/);
+  run(`db.users[0].role='member'; db.members[0].userId='manager'`);
+  assert.ok(run(`buildMemberStatement('g1','m0')`));
+  assert.equal(run(`buildMemberStatement('g1','m1')`), null);
+});
+
+test('statement handles setup, completed groups, post-bid dues and unapplied excess payments', () => {
+  const { run } = setup();
+  run(`db.groups[0].status='inactive'`);
+  assert.equal(run(`buildMemberStatement('g1','m0').rows.length`), 0);
+  run(`db.groups[0].status='active'; db.groups[0].duration=2; month='2027-01';
+    db.auctions=[{groupId:'g1',winnerMemberId:'m0',month:'2026-09',liftMonth:1,payoutAmount:480000}];
+    db.payments=[{groupId:'g1',memberId:'m0',month:'2026-09',amountDue:25000,amountPaid:26000}];`);
+  const s = run(`buildMemberStatement('g1','m0')`);
+  assert.equal(s.rows.length, 2);
+  assert.equal(s.rows[1].due, 27000);
+  assert.equal(s.totals.credit, 1000);
+  assert.equal(s.totals.balance, 27000);
+  assert.equal(s.lift.payoutAmount, 480000);
+});
+
+test('report statement opens the document directly without changing the report route', () => {
+  const { run, context } = setup();
+  run(`navigateManager('reports'); openMemberStatement=(gid,mid)=>{window.statementArgs=[gid,mid]}; openPortalStatement('g1','m0')`);
+  assert.equal(run('getManagerRoute().page'), 'reports');
+  assert.deepEqual(Array.from(context.window.statementArgs), ['g1', 'm0']);
+});
+
 function setup() {
   const elements = new Map();
   const el = id => {
@@ -18,7 +69,7 @@ function setup() {
     localStorage: { removeItem() {} }, confirm: () => false
   });
   context.window.history = { pushState(_a,_b,url) { context.window.location.hash=url; }, replaceState(_a,_b,url) { context.window.location.hash=url; } };
-  for (const file of ['app.js', 'manager-dashboard.js', 'manager-pages.js', 'manager-router.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+  for (const file of ['app.js', 'manager-dashboard.js', 'member-statement.js', 'manager-pages.js', 'manager-router.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   const run = source => vm.runInContext(source, context);
   run(`
     month = '2026-09'; session = { user: { id: 'manager' } };

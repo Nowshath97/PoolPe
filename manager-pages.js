@@ -135,8 +135,7 @@ function renderReportsPage(groups) {
 function openPortalStatement(groupId, memberId) {
   if (!db.groups.some(g => g.id === groupId && g.managerId === currentUser()?.id)
     || !db.members.some(m => m.id === memberId && m.groupId === groupId)) return;
-  navigateManager(`group/${encodeURIComponent(groupId)}/members`);
-  openHistory(memberId);
+  openMemberStatement(groupId, memberId);
 }
 
 function renderAccountSettings(u) {

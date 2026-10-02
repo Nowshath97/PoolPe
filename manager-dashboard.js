@@ -201,6 +201,7 @@ function renderMemberRow(r) {
     <td><div class="member-actions"><button class="btn secondary" data-id="${id}" onclick="openPayment(this.dataset.id)" ${!r.started ? 'disabled' : ''}>${!r.started ? 'Not started' : r.status === 'Paid' ? 'Edit Payment' : 'Mark Paid'}</button>
       <details class="row-menu"><summary aria-label="More actions for ${escapeHtml(r.m.name)}">&hellip;</summary><div>
         <button class="linkbtn" data-id="${id}" onclick="openHistory(this.dataset.id)">View Details</button>
+        <button class="linkbtn" data-group="${escapeHtml(r.m.groupId)}" data-id="${id}" onclick="openMemberStatement(this.dataset.group,this.dataset.id)">View statement</button>
         ${r.payment?.status === 'Paid' ? `<button class="linkbtn due-text" data-id="${id}" onclick="markPending(this.dataset.id)">Mark Pending</button>` : ''}</div></details></div></td></tr>`;
 }
 
