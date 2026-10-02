@@ -216,7 +216,8 @@ function renderMemberTable(s) {
 
 function setManagerFilter(filter, scroll = false) {
   if (!['all', 'paid', 'pending', 'dues', 'bid', 'eligible'].includes(filter)) return;
-  if (scroll && typeof navigateManager === 'function') {
+  if (scroll && typeof navigateManager === 'function'
+      && (getManagerRoute().page !== 'group' || getManagerRoute().tab !== 'members')) {
     navigateManager(`group/${encodeURIComponent(activeGroup)}/members`);
   }
   managerUI.filter = filter;

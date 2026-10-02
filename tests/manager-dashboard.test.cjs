@@ -8,16 +8,17 @@ const root = path.resolve(__dirname, '..');
 function setup() {
   const elements = new Map();
   const el = id => {
-    if (!elements.has(id)) elements.set(id, { innerHTML: '', value: '', textContent: '', hidden: false, dataset: {}, classList: { add() {}, remove() {}, toggle() {} }, scrollIntoView() {} });
+    if (!elements.has(id)) elements.set(id, { innerHTML: '', value: '', textContent: '', hidden: false, dataset: {}, classList: { add() {}, remove() {}, toggle() {} }, scrollIntoView() {}, focus() {} });
     return elements.get(id);
   };
   const context = vm.createContext({
     console: { log() {}, error() {}, warn() {} }, URL, setTimeout() {},
     document: { addEventListener() {}, getElementById: el, querySelectorAll: () => [] },
-    window: { location: { href: 'http://localhost/dashboard.html', replace() {} } },
+    window: { addEventListener() {}, scrollTo() {}, location: { hash: '#/group/g1/overview', href: 'http://localhost/dashboard.html', replace() {} } },
     localStorage: { removeItem() {} }, confirm: () => false
   });
-  for (const file of ['app.js', 'manager-dashboard.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+  context.window.history = { pushState(_a,_b,url) { context.window.location.hash=url; }, replaceState(_a,_b,url) { context.window.location.hash=url; } };
+  for (const file of ['app.js', 'manager-dashboard.js', 'manager-pages.js', 'manager-router.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   const run = source => vm.runInContext(source, context);
   run(`
     month = '2026-09'; session = { user: { id: 'manager' } };
@@ -30,6 +31,73 @@ function setup() {
   `);
   return { run, context, el };
 }
+
+test('portal dashboard is compact; group details live on separate routes', () => {
+  const { run, el } = setup();
+  run(`navigateManager('dashboard')`);
+  let html = el('app').innerHTML;
+  assert.match(html, /happening across your groups/);
+  assert.doesNotMatch(html, /id="managerMemberRows"|id="memberSearch"|Delete Group|Recent Activity|managerGroupSelect/);
+  assert.equal(run('activeGroup'), null);
+  for (const tab of ['overview','members','payments','bids','settings']) {
+    run(`navigateManager('group/g1/${tab}')`);
+    html = el('app').innerHTML;
+    assert.equal(run('activeGroup'), 'g1');
+    assert.match(html, /aria-label="Group navigation"/);
+    assert.equal(html.includes('id="managerMemberRows"'), tab === 'members');
+    assert.equal(html.includes('onclick="deleteGroup()"'), tab === 'settings');
+  }
+  run(`navigateManager('group/private/members')`);
+  assert.equal(run('activeGroup'), null);
+  assert.equal(run('getManagerRoute().page'), 'groups');
+});
+
+test('every portal page and report renders with existing handler references', () => {
+  const { run, el } = setup();
+  const routes = ['dashboard','groups','reports','activity','settings', ...['overview','members','payments','bids','settings'].map(t => `group/g1/${t}`)];
+  for (const route of routes) {
+    run(`navigateManager('${route}')`);
+    for (const match of el('app').innerHTML.matchAll(/(?:onclick|oninput|onchange|onsubmit)="([^"]+)"/g)) {
+      for (const call of match[1].matchAll(/\b([A-Za-z_$][\w$]*)\(/g)) {
+        if (['getElementById','preventDefault'].includes(call[1])) continue;
+        assert.equal(run(`typeof ${call[1]}`), 'function', `${route}: ${call[1]}`);
+      }
+    }
+  }
+  run(`navigateManager('reports')`);
+  for (const report of ['collections','dues','statements','bids','commission']) run(`updatePortalFilter('report','${report}')`);
+  assert.match(el('app').innerHTML, /informational only/);
+});
+
+test('shared payment state, deep links and attention links stay consistent', () => {
+  const { run, context, el } = setup();
+  run(`navigateManager('group/g1/payments'); db.payments=[{groupId:'g1',memberId:'m0',month,amountPaid:25000,amountDue:25000,status:'Paid'}]; render()`);
+  assert.equal(run('getManagerSummary(db.groups[0]).paidCount'), 1);
+  run(`navigateManager('group/g1/members')`);
+  assert.match(el('app').innerHTML, /data-paid="true"/);
+  context.window.location.hash = '#/group/g1/bids';
+  run('render()');
+  assert.match(el('app').innerHTML, /Bid History/);
+  run(`openGroupAttention('g1','pending')`);
+  assert.equal(run('getManagerRoute().tab'), 'members');
+  assert.equal(run('managerUI.filter'), 'pending');
+  run(`db.groups=[]; render()`);
+  assert.equal(run('getManagerRoute().page'), 'groups');
+  assert.equal(run('activeGroup'), null);
+});
+
+test('activity filters and reports exclude unowned groups', () => {
+  const { run, el } = setup();
+  run(`db.groups.push({...db.groups[0],id:'private',managerId:'other',name:'Private'});
+    db.transactions=[{group_id:'g1',member_id:'m0',amount:100,date:'2026-09-10'},{group_id:'private',member_id:'m0',amount:999,date:'2026-09-11'}];
+    navigateManager('activity')`);
+  assert.match(el('app').innerHTML, /paid/);
+  assert.doesNotMatch(el('app').innerHTML, /Private|999/);
+  run(`updatePortalFilter('activityType','bid')`);
+  assert.match(el('app').innerHTML, /No activity recorded yet/);
+  run(`navigateManager('reports')`);
+  assert.doesNotMatch(el('app').innerHTML, /Private/);
+});
 
 test('setup groups never accrue dues even after placeholder start month', () => {
   const { run, el } = setup();
@@ -118,6 +186,7 @@ test('empty groups, one group, multiple groups and authorized selection', () => 
   assert.doesNotMatch(el('app').innerHTML, /Private Pool/);
   run(`selectManagerGroup('private')`);
   assert.equal(run('activeGroup'), 'g2');
+  run(`navigateManager('group/g2/members')`);
   assert.match(el('app').innerHTML, /No members have been added yet/);
   run('db.groups=[]; render()');
   assert.match(el('app').innerHTML, /haven't created a PoolPay group yet/);
@@ -130,7 +199,7 @@ test('pending default, all paid default and completed/uncompleted bids', () => {
   assert.match(el('app').innerHTML, /NEXT MONTHLY BID/);
   run(`db.payments = db.members.map(m => ({groupId:'g1',memberId:m.id,month,amountDue:25000,amountPaid:25000,status:'Paid'})); managerUI.key=null; render()`);
   assert.equal(run('managerUI.filter'), 'all');
-  assert.match(el('app').innerHTML, /All payments are up to date/);
+  assert.equal(run('getManagerSummary(db.groups[0]).pendingCount'), 0);
   run(`db.auctions=[{id:'a1',groupId:'g1',month,winnerMemberId:'m0',liftMonth:1,payoutAmount:95000,date:'2026-09-20'}]; render()`);
   assert.match(el('app').innerHTML, /Bid completed/);
   assert.match(el('app').innerHTML, /95,000/);
@@ -152,6 +221,7 @@ test('future and completed groups do not invent monthly dues; post-bid rate appl
 test('search combines with filters, initial preview is 8, attention clears old search', () => {
   const { run, context, el } = setup();
   const rows = Array.from({length:20}, (_, i) => ({dataset:{memberName:`Member ${i}`, pending:String(i !== 0), paid:String(i === 0), dues:String(i === 2), bid:'false', eligible:'true'}, hidden:false}));
+  context.window.location.hash = '#/group/g1/members';
   context.document.querySelectorAll = selector => selector.startsWith('#managerMemberRows') ? rows : [];
   run('render()');
   assert.equal(rows.filter(r => !r.hidden).length, 8);

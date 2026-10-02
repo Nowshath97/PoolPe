@@ -1,5 +1,40 @@
 # Manager dashboard
 
+## Manager portal navigation
+
+The manager portal now has a persistent desktop sidebar and mobile drawer.
+`manager-router.js` owns hash routing and the shell; `manager-pages.js` composes
+the pages from the existing components and shared `db` in `app.js`.
+`manager-portal.css` contains the responsive sidebar and page layout styles.
+The member dashboard and login flow retain their existing entry points.
+
+Routes within `dashboard.html`:
+
+- `#/dashboard`: all-group totals, attention links and group snapshots.
+- `#/groups`: owned group cards and Create Group.
+- `#/group/<id>/overview`: cycle, collection, bid summary and setup/start month.
+- `#/group/<id>/members`: existing member search, filters, details and Add Member.
+- `#/group/<id>/payments`: collection status and existing payment actions.
+- `#/group/<id>/bids`: existing bid allocation and recorded bid history.
+- `#/group/<id>/settings`: group configuration and confirmed deletion.
+- `#/reports`: collections, dues, statements, bid history and configured commission.
+- `#/activity`: derived activity with group/type/month filters.
+- `#/settings`: existing manager profile information only.
+
+Refresh restores the route after authentication and loading. Hash changes support
+browser Back/Forward. Deleted or unauthorized group links return to Groups,
+without silently selecting a different group. Creating a group opens its workspace.
+The shared application state remains the sole data source across views.
+
+No schema, RLS, or API changes were made for this navigation refactor. Reports
+exports and complete audit events remain future work; the existing records cannot
+reconstruct edits or reversals. There is no new audit table dependency.
+
+The 16 automated checks cover route isolation, handler references, shared state,
+ownership and existing calculation/action behavior. Syntax and deployment asset
+checks pass. Browser/mobile visual QA and live Supabase action verification are
+still outstanding because no browser was connected during implementation.
+
 The manager UI is rendered by `manager-dashboard.js` and styled by
 `manager-dashboard.css`. `dashboard.html` loads these alongside the existing
 application. Supabase queries, authentication, roles, and payment/member/bid

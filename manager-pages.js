@@ -95,6 +95,7 @@ function renderGroupBids(s) {
 }
 
 function renderActivityPage(groups) {
+  if (portalFilters.activityGroup && !groups.some(g => g.id === portalFilters.activityGroup)) portalFilters.activityGroup = '';
   const events = groups.flatMap(g => getManagerActivity(getManagerSummary(g)).map(e => ({ ...e, groupId:g.id, groupName:g.name })));
   const filtered = events.filter(e => (!portalFilters.activityGroup || e.groupId === portalFilters.activityGroup)
     && (!portalFilters.activityType || e.kind === portalFilters.activityType)

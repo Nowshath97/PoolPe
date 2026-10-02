@@ -3,6 +3,9 @@
 # Add new public assets here when adding pages, scripts, styles, or images.
 *
 !/index.html
+!/how-it-works.html
+!/public.css
+!/public.js
 !/dashboard.html
 !/signup.html
 !/app.js
