@@ -69,7 +69,7 @@ function setup() {
     localStorage: { removeItem() {} }, confirm: () => false
   });
   context.window.history = { pushState(_a,_b,url) { context.window.location.hash=url; }, replaceState(_a,_b,url) { context.window.location.hash=url; } };
-  for (const file of ['app.js', 'manager-dashboard.js', 'member-statement.js', 'reminders.js', 'manager-pages.js', 'manager-router.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+  for (const file of ['app.js', 'manager-dashboard.js', 'member-statement.js', 'reminders.js', 'manager-pages.js', 'manager-home.js', 'manager-router.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   const run = source => vm.runInContext(source, context);
   run(`
     month = '2026-09'; session = { user: { id: 'manager' } };
@@ -87,7 +87,7 @@ test('portal dashboard is compact; group details live on separate routes', () =>
   const { run, el } = setup();
   run(`navigateManager('dashboard')`);
   let html = el('app').innerHTML;
-  assert.match(html, /happening across your groups/);
+  assert.match(html, /needs your attention today/);
   assert.doesNotMatch(html, /id="managerMemberRows"|id="memberSearch"|Delete Group|Recent Activity|managerGroupSelect/);
   assert.equal(run('activeGroup'), null);
   for (const tab of ['overview','members','payments','bids','settings']) {
@@ -375,4 +375,70 @@ test('pending reminder queue includes arrears and partial payments, excludes pai
   assert.equal(run("pendingReminderMembers('private').length"),0);
   run("db.users[0].role='member'");
   assert.equal(run("pendingReminderMembers('g1').length"),0);
+});
+
+
+test('home model covers empty, single, multiple and unauthorized groups without duplicate queries', () => {
+  const { run } = setup();
+  assert.equal(run('buildManagerHome(currentUser()).active.length'),1);
+  assert.doesNotMatch(run('renderManagerHome(currentUser())'), /Group snapshots|Group health/);
+  run("db.groups.push({...db.groups[0],id:'g2'});db.members.push(...Array.from({length:20},(_,i)=>({id:'b'+i,groupId:'g2',name:'B'+i})))");
+  assert.equal(run('buildManagerHome(currentUser()).collection.expected'),1000000);
+  assert.match(run('renderManagerHome(currentUser())'), /Group health/);
+  run("db.groups.push({...db.groups[0],id:'private',managerId:'other',name:'SECRET'})");
+  assert.doesNotMatch(run('renderManagerHome(currentUser())'), /SECRET/);
+  run('db.groups=[]');
+  assert.match(run('renderManagerHome(currentUser())'), /Welcome to PoolPay/);
+  assert.doesNotMatch(run('renderManagerHome(currentUser())'), /NaN|undefined|Group health/);
+});
+
+test('home status, history and ageing include partial amounts and recorded obligation overrides', () => {
+  const { run } = setup();
+  run(`month='2026-12';db.payments=[{groupId:'g1',memberId:'m0',month:'2026-12',amountDue:20000,amountPaid:10000},
+    {groupId:'g1',memberId:'m1',month:'2026-12',amountDue:25000,amountPaid:25000}];`);
+  const m=run('buildManagerHome(currentUser())');
+  assert.equal(m.collection.expected,495000);
+  assert.equal(m.collection.collected,35000);
+  assert.equal(m.collection.partial,1);
+  assert.equal(m.collection.paid,1);
+  assert.equal(m.collection.pending,18);
+  assert.deepEqual(Array.from(m.ageing),[460000,500000,500000,500000]);
+  assert.equal(m.history[5].value,35000);
+  assert.equal(m.attention[0].priority,0);
+  assert.ok(m.attention.some(a=>a.title.includes('partial')));
+});
+
+test('home checklist reflects paid members, completed bids and recorded payout only', () => {
+  const { run } = setup();
+  run(`db.payments=db.members.map(m=>({groupId:'g1',memberId:m.id,month,amountDue:25000,amountPaid:25000,status:'Paid'}));
+    db.auctions=[{groupId:'g1',month,winnerMemberId:'m0',liftMonth:1,payoutAmount:480000}];`);
+  const m=run('buildManagerHome(currentUser())');
+  assert.equal(m.attention.length,0);
+  assert.equal(m.collection.percent,100);
+  assert.ok(m.checklist.every(c=>c.done));
+  assert.doesNotMatch(run('renderManagerHome(currentUser())'), /homeQuickAction\('bid'\)/);
+  run('db.auctions=[]');
+  assert.equal(run('buildManagerHome(currentUser()).checklist[1].done'),false);
+  assert.ok(run("buildManagerHome(currentUser()).attention.some(a=>a.tab==='bids')"));
+});
+
+test('home handles setup, absent dates and completed groups without fabricated future obligations', () => {
+  const { run } = setup();
+  run("db.groups[0].start=null");
+  assert.equal(run('buildManagerHome(currentUser()).collection.expected'),0);
+  assert.doesNotMatch(run('renderManagerHome(currentUser())'),/NaN|undefined/);
+  run("db.groups[0].start='2026-09-01';db.groups[0].duration=1;month='2026-11'");
+  const m=run('buildManagerHome(currentUser())');
+  assert.equal(m.active.length,0);
+  assert.equal(m.collection.expected,0);
+  assert.equal(m.ageing[2],500000);
+  assert.equal(m.checklist.length,0);
+});
+
+test('home upcoming uses confirmed start dates only within the next seven days', () => {
+  const { run } = setup();
+  run("db.groups[0].start='2026-10-05';month='2026-10'");
+  assert.equal(run("buildManagerHome(currentUser(),new Date('2026-10-02T06:00:00Z')).upcoming.length"),1);
+  run("db.groups[0].status='inactive'");
+  assert.equal(run("buildManagerHome(currentUser(),new Date('2026-10-02T06:00:00Z')).upcoming.length"),0);
 });

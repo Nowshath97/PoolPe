@@ -30,29 +30,6 @@ function renderGroupCard(g) {
     <p class="small muted">Collection: ${money(s.collected)} / ${money(s.expected)}</p>${groupRouteLink(g)}</article>`;
 }
 
-function renderManagerHome(u, groups) {
-  const summaries = groups.map(getManagerSummary);
-  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', hourCycle: 'h23' }).format(new Date()));
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const active = summaries.filter(s => String(s.g.status).toLowerCase() === 'active' && !groupNeedsStart(s.g) && s.cycle <= s.g.duration);
-  const metrics = portalMetrics([
-    ['Active groups', active.length], ['Total members', summaries.reduce((n,s) => n + s.rows.length, 0)],
-    ['This month collected', money(summaries.reduce((n,s) => n + s.collected, 0)), month],
-    ['Outstanding', money(summaries.reduce((n,s) => n + s.pending + s.previousDues, 0)), 'Current balances and previous dues']
-  ]);
-  const attention = summaries.flatMap(s => {
-    const rows = [];
-    const item = (text, tab, filter = '') => `<a class="portal-attention" href="#/group/${encodeURIComponent(s.g.id)}/${tab}" ${filter ? `data-group="${escapeHtml(s.g.id)}" data-filter="${filter}" onclick="event.preventDefault();openGroupAttention(this.dataset.group,this.dataset.filter)"` : ''}><div><b>${text}</b><small>${escapeHtml(s.g.name)}</small></div><span>View →</span></a>`;
-    if (s.pendingCount) rows.push(item(`${s.pendingCount} payments pending`, 'members', 'pending'));
-    if (s.duesCount) rows.push(item(`${s.duesCount} members have previous dues`, 'members', 'dues'));
-    if (s.inCycle && !s.auction && s.eligible) rows.push(item(`${escapeHtml(month)} bid not completed`, 'bids'));
-    if (groupNeedsStart(s.g)) rows.push(item('Complete group setup', 'overview'));
-    return rows;
-  });
-  return portalHeading(`${greeting}, ${u.name || 'Manager'}`, "Here's what's happening across your groups.")
-    + (groups.length ? `${metrics}<section><h2>Needs Attention</h2><div class="card">${attention.slice(0, 6).join('') || '<p class="success-note">All payments are up to date ✓</p>'}${attention.length > 6 ? '<p><a href="#/groups">View all groups for more items →</a></p>' : ''}</div></section>
-    <section><div class="section-title"><h2>Group snapshots</h2><a href="#/groups">View All Groups →</a></div><div class="group-card-grid">${(active.length ? active.map(s => s.g) : groups).slice(0, 4).map(renderGroupCard).join('')}</div></section>` : emptyManagerGroups());
-}
 
 function openGroupAttention(id, filter) {
   if (!db.groups.some(g => g.id === id && g.managerId === currentUser()?.id)) return;
