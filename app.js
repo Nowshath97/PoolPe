@@ -918,6 +918,20 @@ function dueForMonth(g, m, n) {
     : Number(g.monthly);
 }
 
+// Payments are monthly balance records; transactions are receipt history, never
+// an additional source of paid totals. Historical amount_due is a snapshot.
+function paymentForMonth(g, m, ym, excludeId = null) {
+  const records = db.payments.filter(p => p.groupId === g.id && p.memberId === m.id && p.month === ym);
+  const n = monthIndex(g, ym);
+  const due = groupHasStarted(g, ym) && n <= g.duration
+    ? Number(records[0]?.amountDue ?? dueForMonth(g, m, n)) : 0;
+  const paid = records.filter(p => p.id !== excludeId || excludeId === null)
+    .reduce((sum, p) => sum + Number(p.amountPaid || 0), 0);
+  const balance = Math.max(due - paid, 0);
+  return { records, due, paid, balance,
+    status: paid > 0 ? (paid >= due ? 'Paid' : 'Partial') : due > 0 ? 'Pending' : 'Not due' };
+}
+
 /* =========================================================
    MEMBER CALCULATIONS
    ========================================================= */
@@ -938,7 +952,7 @@ function memberStats(g, m) {
     m.id
   );
 
-  const total = paid.reduce(
+  const total = rec.reduce(
     (n, p) =>
       n + Number(p.amountPaid || 0),
     0
@@ -985,26 +999,7 @@ function duesFor(g, m) {
   ) {
     const ym = ymFor(g, n);
 
-    const p = db.payments.find(
-      (x) =>
-        x.groupId === g.id &&
-        x.memberId === m.id &&
-        x.month === ym
-    );
-
-    const due = Number(
-      p?.amountDue ??
-        dueForMonth(g, m, n)
-    );
-
-    const paid = Number(
-      p?.amountPaid || 0
-    );
-
-    const balance = Math.max(
-      0,
-      due - paid
-    );
+    const { due, paid, balance } = paymentForMonth(g, m, ym);
 
     if (balance > 0) {
       unpaid.push({
@@ -1043,26 +1038,8 @@ function openObligations(g, m) {
   ) {
     const ym = ymFor(g, n);
 
-    const p = db.payments.find(
-      (x) =>
-        x.groupId === g.id &&
-        x.memberId === m.id &&
-        x.month === ym
-    );
-
-    const due = Number(
-      p?.amountDue ??
-        dueForMonth(g, m, n)
-    );
-
-    const paid = Number(
-      p?.amountPaid || 0
-    );
-
-    const balance = Math.max(
-      0,
-      due - paid
-    );
+    const { records, due, paid, balance } = paymentForMonth(g, m, ym);
+    const p = records[0];
 
     if (balance > 0) {
       items.push({
@@ -1864,8 +1841,7 @@ function modals() {
         </h3>
 
         <p class="muted small">
-          The amount will clear the
-          oldest outstanding months first.
+          Choose the contribution month this payment belongs to.
         </p>
 
         <div
@@ -1877,6 +1853,12 @@ function modals() {
           id="paymentMemberId"
           type="hidden">
 
+        <div class="field"><label for="payRecord">Payment record</label>
+          <select id="payRecord" onchange="selectPaymentRecord()"></select>
+          <p class="small muted">Existing records may contain several receipts. Editing corrects the total for that record.</p></div>
+        <div class="field"><label for="payMonth">Contribution Month *</label>
+          <select id="payMonth" required onchange="updatePaymentContext()"></select></div>
+        <div id="payMonthContext" class="info-box" aria-live="polite"></div>
         <div class="field">
           <label>
             Amount Paid *
@@ -2314,374 +2296,120 @@ function mEmailMatches(a, b) {
    PAYMENT
    ========================================================= */
 
+let paymentSaving = false;
+function validPaymentMonths(g) {
+  if (!groupHasStarted(g)) return [];
+  // Preserve the existing policy: collect elapsed months, with no future advances.
+  return Array.from({length: Math.max(0, Math.min(monthIndex(g, month), g.duration))}, (_, i) => ymFor(g, i + 1));
+}
+function paymentFormData() {
+  const g = db.groups.find(g => g.id === activeGroup);
+  const m = db.members.find(m => m.id === paymentMemberId.value && m.groupId === g?.id);
+  const p = db.payments.find(p => p.id === document.getElementById('payRecord').value && p.groupId === g?.id && p.memberId === m?.id);
+  return {g, m, p};
+}
 async function openPayment(mid) {
-  try {
-    const g = db.groups.find(
-      (g) =>
-        g.id === activeGroup
-    );
-
-    const m = db.members.find(
-      (m) => m.id === mid
-    );
-
-    if (!g || !m || m.groupId !== g.id) {
-      throw new Error("This member or group is no longer available. Reload the dashboard.");
-    }
-
-    // Opening the form must not write a pending payment to the database.
-    if (!groupHasStarted(g)) return toast('Payments begin from the confirmed chit start month.');
-    // savePayment creates any missing rows when the user submits.
-
-
-    const items =
-      openObligations(g, m);
-
-    const total =
-      items.reduce(
-        (s, x) =>
-          s + x.balance,
-        0
-      );
-
-    const prev =
-      duesFor(g, m);
-
-    paymentMemberId.value =
-      mid;
-
-    paymentMemberInfo.innerHTML = `
-      <b>${escapeHtml(m.name)}</b>
-
-      <div class="small muted">
-        Previous dues:
-        ${prev.months} month(s)
-        · Total currently outstanding:
-        ${money(total)}
-      </div>
-
-      <div class="small muted">
-        Payments are automatically
-        applied to the oldest unpaid
-        month first.
-      </div>
-    `;
-
-    payAmount.value = total;
-
-    payDate.value =
-      new Date()
-        .toISOString()
-        .slice(0, 10);
-
-    payMode.value = "";
-    payReference.value = "";
-    payNotes.value = "";
-
-    modal(
-      "paymentModal"
-    );
-  } catch (err) {
-    console.error(err);
-    toast(
-      "Unable to open payment form: " + (err.message || "Please reload and try again.")
-    );
-  }
+  const g = db.groups.find(g => g.id === activeGroup);
+  const m = db.members.find(m => m.id === mid && m.groupId === g?.id);
+  if (!m || g.managerId !== currentUser()?.id) return toast('Member unavailable.');
+  const months = validPaymentMonths(g);
+  if (!months.length) return toast('Payments begin from the confirmed chit start month.');
+  paymentMemberId.value = mid;
+  paymentMemberInfo.innerHTML = `<b>Member: ${escapeHtml(m.name)}</b>`;
+  const records = db.payments.filter(p => p.groupId === g.id && p.memberId === mid);
+  document.getElementById('payRecord').innerHTML = '<option value="">Record additional payment</option>' + records.map(p =>
+    `<option value="${escapeHtml(p.id)}">Edit ${escapeHtml(p.month)} ? ${money(p.amountPaid)} ? ${escapeHtml(p.date || 'No date')}</option>`).join('');
+  document.getElementById('payMonth').innerHTML = months.map(ym => `<option value="${ym}">${ym}</option>`).join('');
+  document.getElementById('payMonth').value = months.includes(month) ? month : months.at(-1);
+  const summary = paymentForMonth(g, m, month);
+  document.getElementById('payRecord').value = summary.status === 'Paid' ? summary.records[0]?.id || '' : '';
+  selectPaymentRecord();
+  modal('paymentModal');
 }
-
+function selectPaymentRecord() {
+  const {p} = paymentFormData();
+  if (p) document.getElementById('payMonth').value = p.month;
+  payDate.value = p?.date || new Date().toISOString().slice(0, 10);
+  payMode.value = p?.mode || '';
+  payReference.value = p?.reference || '';
+  payNotes.value = p?.notes || '';
+  updatePaymentContext();
+  if (p) payAmount.value = p.amountPaid;
+}
+function updatePaymentContext() {
+  const {g, m, p} = paymentFormData();
+  const ym = document.getElementById('payMonth').value;
+  const summary = paymentForMonth(g, m, ym);
+  const available = paymentForMonth(g, m, ym, p?.id ?? null);
+  document.getElementById('payMonthContext').innerHTML = `<b>${escapeHtml(ym)}</b>
+    <div>Required ${money(summary.due)}</div><div>Already Paid ${money(summary.paid)}</div>
+    <div>Remaining ${money(summary.balance)}</div>${summary.balance === 0 ? '<p>This month is fully paid.</p>' : ''}
+    ${p ? '<p class="small muted">The amount replaces the selected record. Other payments remain allocated to their months.</p>' : ''}`;
+  payAmount.value = available.balance;
+}
 async function savePayment() {
-  const mid =
-    paymentMemberId.value;
-
-  const g = db.groups.find(
-    (g) =>
-      g.id === activeGroup
-  );
-
-  const m = db.members.find(
-    (m) => m.id === mid
-  );
-
-  const amt =
-    Number(payAmount.value);
-
-  if (!groupHasStarted(g)) return toast('Payments begin from the confirmed chit start month.');
-
-  if (!amt || amt <= 0) {
-    return toast(
-      "Enter a valid amount"
-    );
-  }
-
-  if (
-    !payDate.value ||
-    !payMode.value
-  ) {
-    return toast(
-      "Select payment date and mode"
-    );
-  }
-
-  const items =
-    openObligations(g, m);
-
-  const total =
-    items.reduce(
-      (s, x) =>
-        s + x.balance,
-      0
-    );
-
-  if (!total) {
-    return toast(
-      "No outstanding amount to allocate"
-    );
-  }
-
-  if (amt > total) {
-    return toast(
-      "Amount exceeds total outstanding " +
-        money(total)
-    );
-  }
-
-  let remaining = amt;
-
-  const allocations = [];
-
+  if (paymentSaving) return;
+  const {g, m, p} = paymentFormData();
+  const ym = document.getElementById('payMonth').value;
+  const amt = Number(payAmount.value);
+  if (!g || !m || g.managerId !== currentUser()?.id) return toast('Member unavailable.');
+  if (!validPaymentMonths(g).includes(ym)) return toast('Select a valid contribution month.');
+  if (!Number.isFinite(amt) || amt <= 0) return toast('Enter a valid amount.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(payDate.value) || !Number.isFinite(Date.parse(payDate.value)) || !payMode.value) return toast('Select payment date and mode.');
+  const available = paymentForMonth(g, m, ym, p?.id ?? null);
+  // Existing excess can be corrected without inventing an advance-credit rule.
+  const limit = p?.month === ym ? Math.max(available.balance, p.amountPaid) : available.balance;
+  if (amt > limit) return toast('Amount exceeds remaining contribution ' + money(available.balance));
+  paymentSaving = true;
   try {
-    for (const item of items) {
-      if (remaining <= 0)
-        break;
-
-      let p = item.p;
-
-      if (!p) {
-        const payload = {
-          group_id: g.id,
-          month: `${item.ym}-01`,
-          member_id: mid,
-          amount_due: item.due,
-          amount_paid: 0,
-          status: "pending",
-          date: null,
-          mode: null,
-          reference: "",
-          notes: "",
-        };
-
-        const { data, error } =
-          await supabaseClient
-            .from("payments")
-            .insert(payload)
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        p = mapPayment(data);
-
-        db.payments.push(p);
-      }
-
-      const applied =
-        Math.min(
-          remaining,
-          item.balance
-        );
-
-      const newPaid =
-        Number(
-          p.amountPaid || 0
-        ) + applied;
-
-      const newStatus =
-        newPaid >=
-        Number(p.amountDue)
-          ? "paid"
-          : "partial";
-
-      const update = {
-        amount_paid: newPaid,
-        status: newStatus,
-        date:
-          payDate.value,
-        mode:
-          payMode.value,
-        reference:
-          payReference.value.trim(),
-        notes:
-          payNotes.value.trim(),
-      };
-
-      const { data, error } =
-        await supabaseClient
-          .from("payments")
-          .update(update)
-          .eq("id", p.id)
-          .select()
-          .single();
-
-      if (error) throw error;
-
-      Object.assign(
-        p,
-        mapPayment(data)
-      );
-
-      allocations.push({
-        month: item.ym,
-        amount: applied,
-      });
-
-      remaining -= applied;
-    }
-
-    /*
-      FIX from your original app.js:
-      db.transactions was not initialized
-      in the original seed object.
-    */
-
-    const transactionPayload = {
-      group_id: g.id,
-      member_id: mid,
-      amount: amt,
-      date: payDate.value,
-      mode: payMode.value,
-      reference:
-        payReference.value.trim(),
-      notes:
-        payNotes.value.trim(),
-      allocations,
-    };
-
-    const {
-      data: transaction,
-      error: transactionError,
-    } =
-      await supabaseClient
-        .from("transactions")
-        .insert(
-          transactionPayload
-        )
-        .select()
-        .single();
-
-    if (
-      transactionError
-    ) {
-      console.warn(
-        "Transaction insert failed:",
-        transactionError
-      );
-    } else {
-      db.transactions.push(
-        transaction
-      );
-    }
-
-    closeModal(
-      "paymentModal"
-    );
-
-    render();
-
-    const left =
-      openObligations(
-        g,
-        m
-      );
-
-    const prev =
-      duesFor(g, m);
-
-    toast(
-      prev.months
-        ? `Payment recorded · ${prev.months} month${
-            prev.months > 1
-              ? "s"
-              : ""
-          } due remaining`
-        : "Payment recorded · no previous dues"
-    );
-  } catch (err) {
-    console.error(
-      "Payment error:",
-      err
-    );
-
-    toast(
-      err.message ||
-        "Unable to record payment"
-    );
-  }
-}
-
-/* =========================================================
-   MARK PAYMENT PENDING
-   ========================================================= */
-
-async function markPending(mid) {
-  if (
-    !confirm(
-      "Mark this payment as pending?"
-    )
-  ) {
-    return;
-  }
-
-  try {
-    const p =
-      db.payments.find(
-        (p) =>
-          p.groupId ===
-            activeGroup &&
-          p.month === month &&
-          p.memberId === mid
-      );
-
-    if (!p) {
-      return toast(
-        "Payment record not found"
-      );
-    }
-
-    const update = {
-      status: "pending",
-      amount_paid: 0,
-      date: null,
-      mode: null,
-      reference: "",
-      notes: "",
-    };
-
-    const { data, error } =
-      await supabaseClient
-        .from("payments")
-        .update(update)
-        .eq("id", p.id)
-        .select()
-        .single();
-
+    // Keep the existing cumulative monthly record model. Sum all records when
+    // reading, but add new receipts to one record to respect possible unique keys.
+    const target = p || available.records[0];
+    const newPaid = p ? amt : Number(target?.amountPaid || 0) + amt;
+    const payload = {group_id:g.id, member_id:m.id, month:ym + '-01',
+      amount_due:available.due, amount_paid:newPaid,
+      status:available.paid + amt >= available.due ? 'paid' : 'partial',
+      date:payDate.value, mode:payMode.value, reference:payReference.value.trim(), notes:payNotes.value.trim()};
+    let query = supabaseClient.from('payments');
+    query = target ? query.update(payload).eq('id', target.id).eq('group_id', g.id).eq('member_id', m.id)
+      .eq('month', target.month + '-01').eq('amount_paid', target.amountPaid) : query.insert(payload);
+    const {data, error} = await query.select().single();
     if (error) throw error;
-
-    Object.assign(
-      p,
-      mapPayment(data)
-    );
-
+    if (target) Object.assign(target, mapPayment(data));
+    else db.payments.push(mapPayment(data));
+    let receiptWarning = false;
+    if (!p) {
+      const receipt = await supabaseClient.from('transactions').insert({group_id:g.id, member_id:m.id,
+        amount:amt, date:payload.date, mode:payload.mode, reference:payload.reference, notes:payload.notes,
+        allocations:[{month:ym, amount:amt}]}).select().single();
+      if (receipt.error) receiptWarning = true;
+      else db.transactions.push(receipt.data);
+    }
+    closeModal('paymentModal');
     render();
-
-    toast(
-      "Marked pending"
-    );
+    toast(receiptWarning ? 'Payment saved, but receipt history could not be saved. Do not submit again.' : 'Payment saved. Monthly balances updated.');
   } catch (err) {
-    console.error(err);
-    toast(
-      "Unable to update payment"
-    );
-  }
+    toast('Unable to save payment: ' + (err.message || 'Reload and try again.'));
+  } finally { paymentSaving = false; }
+}
+async function markPending(mid) {
+  if (paymentSaving || !confirm('Reverse all payments allocated to this contribution month? Receipt history is retained.')) return;
+  const g = db.groups.find(g => g.id === activeGroup);
+  if (!g || g.managerId !== currentUser()?.id) return;
+  paymentSaving = true;
+  try {
+    const {data, error} = await supabaseClient.from('payments')
+      .update({amount_paid:0, status:'pending', date:null, mode:null, reference:'', notes:''})
+      .eq('group_id', g.id).eq('member_id', mid).eq('month', month + '-01').select();
+    if (error) throw error;
+    for (const row of data) {
+      const p = db.payments.find(p => p.id === row.id);
+      if (p) Object.assign(p, mapPayment(row));
+    }
+    render();
+    toast('Monthly payments reversed.');
+  } catch (err) { toast('Unable to reverse payment: ' + err.message); }
+  finally { paymentSaving = false; }
 }
 
 /* =========================================================
@@ -2704,60 +2432,10 @@ function openDues(mid) {
     m.name +
     " · Outstanding Dues";
 
-  duesBody.innerHTML =
-    d.months
-      ? `
-        <div class="info-box">
-          <b>
-            ${d.months}
-            month${
-              d.months > 1
-                ? "s"
-                : ""
-            }
-            due ·
-            ${money(d.amount)}
-          </b>
-        </div>
-
-        <table>
-
-          <thead>
-            <tr>
-              <th>Month</th>
-              <th>Amount</th>
-            </tr>
-          </thead>
-
-          <tbody>
-
-            ${d.items
-              .map(
-                (x) => `
-                  <tr>
-                    <td>
-                      ${x.ym}
-                    </td>
-
-                    <td>
-                      ${money(
-                        x.amount
-                      )}
-                    </td>
-                  </tr>
-                `
-              )
-              .join("")}
-
-          </tbody>
-
-        </table>
-      `
-      : `
-        <div class="empty">
-          No previous dues.
-        </div>
-      `;
+  const rows = validPaymentMonths(g).map(ym => ({ym, ...paymentForMonth(g, m, ym)}));
+  duesBody.innerHTML = `<p>Total previous dues: <b>${money(d.amount)}</b></p><div class="table-wrap"><table>
+    <thead><tr><th>Contribution Month</th><th>Required</th><th>Paid</th><th>Due</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td>${escapeHtml(r.ym)}</td><td>${money(r.due)}</td><td>${money(r.paid)}</td><td>${r.balance ? money(r.balance) : 'No dues'}</td></tr>`).join('')}</tbody></table></div>`;
 
   modal("duesModal");
 }
@@ -2798,11 +2476,11 @@ function openHistory(mid) {
 
         <thead>
           <tr>
-            <th>Month</th>
-            <th>Due</th>
+            <th>Contribution Month</th>
+            <th>Required</th>
             <th>Paid</th>
             <th>Status</th>
-            <th>Date</th>
+            <th>Payment Date</th>
             <th>Mode</th>
           </tr>
         </thead>
@@ -2847,7 +2525,7 @@ function openHistory(mid) {
                           : "pending"
                       }">
 
-                      ${p.status}
+                      ${paymentForMonth(db.groups.find(g => g.id === m.groupId), m, p.month).status}
 
                     </span>
 

@@ -15,8 +15,7 @@ function buildMemberStatement(groupId, memberId, through = month) {
   }
   const rows = [...months].sort().map(ym => {
     const p = records.find(x => x.month === ym);
-    const due = Number(p?.amountDue ?? dueForMonth(g, m, monthIndex(g, ym)));
-    const paid = Number(p?.amountPaid || 0);
+    const {due, paid} = paymentForMonth(g, m, ym);
     const balance = Math.max(0, due - paid);
     const credit = Math.max(0, paid - due);
     return { month: ym, due, paid, balance, credit,
@@ -53,7 +52,7 @@ function renderMemberStatement(s) {
     ${s.totals.credit ? `<p class="statement-note">Excess payments recorded: ${amount(s.totals.credit)}. These have not been offset against other months in this statement.</p>` : ''}
     <h2 class="statement-section-title">Monthly account details</h2>
     <p class="statement-caption">Includes unpaid scheduled months through ${e(s.through)}. Amounts in Indian rupees (INR).</p>
-    <div class="statement-table-wrap"><table class="statement-table"><thead><tr><th>Month</th><th>Due</th><th>Paid</th><th>Balance</th><th>Status</th><th>Payment details</th></tr></thead>
+    <div class="statement-table-wrap"><table class="statement-table"><thead><tr><th>Contribution Month</th><th>Due</th><th>Paid</th><th>Balance</th><th>Status</th><th>Payment Date / details</th></tr></thead>
     <tbody>${s.rows.length ? s.rows.map(r => `<tr><td>${e(r.month)}</td><td>${amount(r.due)}</td><td>${amount(r.paid)}</td><td>${amount(r.balance)}</td><td>${e(r.status)}</td>
       <td>${e(r.date || 'No date recorded')}<br>${e(r.mode || '-')}${r.reference ? `<br>Ref: ${e(r.reference)}` : ''}</td></tr>`).join('')
       : '<tr><td colspan="6" class="statement-empty">No scheduled dues or payment records for this period.</td></tr>'}</tbody>

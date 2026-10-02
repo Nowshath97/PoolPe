@@ -67,9 +67,10 @@ function getManagerSummary(g) {
   const inCycle = started && cycle >= 1 && cycle <= g.duration;
   const members = db.members.filter(m => m.groupId === g.id);
   const rows = members.map(m => {
-    const payment = db.payments.find(p => p.groupId === g.id && p.memberId === m.id && p.month === month);
-    const due = started ? Number(payment?.amountDue ?? (inCycle ? dueForMonth(g, m, cycle) : 0)) : 0;
-    const paid = started ? Number(payment?.amountPaid || 0) : 0;
+    const summary = paymentForMonth(g, m, month);
+    const payment = summary.records[0];
+    const due = started ? summary.due : 0;
+    const paid = started ? summary.paid : 0;
     const balance = Math.max(0, due - paid);
     const dues = duesFor(g, m);
     const lift = liftFor(g.id, m.id);
@@ -227,15 +228,15 @@ function renderMemberRow(r) {
     <td><button class="linkbtn" data-id="${id}" onclick="openHistory(this.dataset.id)"><b>${escapeHtml(r.m.name)}</b></button></td>
     <td><span class="pill ${r.status === 'Paid' ? 'paid' : r.balance ? 'warning' : 'neutral'}">${r.status}</span></td>
     <td>${!r.started ? '&mdash;' : r.dues.amount ? `<button class="linkbtn due-text" data-id="${id}" onclick="openDues(this.dataset.id)">${money(r.dues.amount)}<small class="cell-detail">${r.dues.months} month(s)</small></button>` : '<span class="pill paid">No dues</span>'}</td>
-    <td>${r.started ? money(r.due) : '&mdash;'}${r.status === 'Partial' ? `<small class="cell-detail muted">${money(r.balance)} remaining</small>` : ''}</td><td>${r.started ? money(r.paid) : '&mdash;'}</td>
+    <td>${r.started ? money(r.due) : '&mdash;'}</td><td>${!r.started ? '&mdash;' : r.balance ? money(r.balance) : '<span class="pill paid">No dues</span>'}</td>
     <td><span class="pill ${r.lift ? 'winner' : 'neutral'}">${r.lift ? 'Bid Won' : 'Yet to Bid'}</span></td>
-    <td><div class="member-actions"><button class="btn secondary" data-id="${id}" onclick="openPayment(this.dataset.id)" ${!r.started ? 'disabled' : ''}>${!r.started ? 'Not started' : r.status === 'Paid' ? 'Edit Payment' : 'Mark Paid'}</button>
+    <td><div class="member-actions"><button class="btn secondary" data-id="${id}" onclick="openPayment(this.dataset.id)" ${!r.started ? 'disabled' : ''}>${!r.started ? 'Not started' : r.status === 'Paid' ? 'Edit Payment' : 'Record Payment'}</button>
         <button class="reminder-button" data-group="${escapeHtml(r.m.groupId)}" data-id="${id}" onclick="openMemberReminder(this.dataset.group,this.dataset.id)" title="Prepare a WhatsApp reminder"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4M12 2V1"/></svg><span>Remind</span></button>
       <details class="row-menu" ontoggle="positionMemberMenu(this)"><summary aria-label="More actions for ${escapeHtml(r.m.name)}">&hellip;</summary><div>
         <button class="linkbtn" data-id="${id}" onclick="openHistory(this.dataset.id)">View Details</button>
         <button class="linkbtn" data-group="${escapeHtml(r.m.groupId)}" data-id="${id}" onclick="openMemberStatement(this.dataset.group,this.dataset.id)">View statement</button>
 
-        ${r.payment?.status === 'Paid' ? `<button class="linkbtn due-text" data-id="${id}" onclick="markPending(this.dataset.id)">Mark Pending</button>` : ''}</div></details></div></td></tr>`;
+        ${r.paid > 0 ? `<button class="linkbtn due-text" data-id="${id}" onclick="markPending(this.dataset.id)">Mark Pending</button>` : ''}</div></details></div></td></tr>`;
 }
 
 function renderMemberTable(s) {
@@ -243,7 +244,7 @@ function renderMemberTable(s) {
     <div class="toolbar">${pendingReminderButton(s)}<button class="btn secondary" onclick="modal('memberModal')">+ Add Member</button></div></div>
     ${!s.rows.length ? '<div class="empty"><p>No members have been added yet.</p><button class="btn primary" onclick="modal(\'memberModal\')">Add Member</button></div>' : `
       ${renderMemberFilters(s)}<div class="member-search"><label class="sr-only" for="memberSearch">Search members by name</label><input id="memberSearch" type="search" placeholder="Search members" value="${escapeHtml(managerUI.search)}" oninput="filterMemberRows(this.value)"><span id="memberResultCount" class="small muted" role="status"></span></div>
-      <div class="table-wrap" tabindex="0" aria-label="Member payments"><table><thead><tr><th scope="col">Member</th><th scope="col">Payment</th><th scope="col">Previous Dues</th><th scope="col">This Month Due</th><th scope="col">Paid Amount</th><th scope="col">Bid Status</th><th scope="col">Action</th></tr></thead>
+      <div class="table-wrap" tabindex="0" aria-label="Member payments"><table><thead><tr><th scope="col">Member</th><th scope="col">Payment</th><th scope="col">Previous Dues</th><th scope="col">Monthly Amount</th><th scope="col">This Month Due</th><th scope="col">Bid Status</th><th scope="col">Action</th></tr></thead>
       <tbody id="managerMemberRows">${s.rows.map(renderMemberRow).join('')}<tr id="noMemberMatches" hidden><td colspan="7" role="status">No members match this search and filter.</td></tr></tbody></table></div>
       <button id="expandMemberList" class="btn secondary expand-members" onclick="expandManagerMembers()" hidden>View all members</button>`}</section>`;
 }
