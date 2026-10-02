@@ -42,3 +42,8 @@ textarea{font:inherit}.field textarea{width:100%;padding:10px;border:1px solid #
 @media (max-width: 420px) {
   .payment-fields-grid { grid-template-columns: 1fr; }
 }
+
+.payment-allocation-list { margin: 0; font-size: 13px; }
+.payment-allocation-list > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.payment-allocation-list dd { margin: 0; font-weight: 700; white-space: nowrap; }
+.payment-allocation-list small { display: block; color: var(--muted); margin-top: 3px; }

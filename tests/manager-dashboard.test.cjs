@@ -56,7 +56,7 @@ test('record and edit save explicit month, scoped row and refresh both old and n
   assert.equal(run('duesFor(db.groups[0],db.members[0]).amount'),15000);
   assert.equal(run('getManagerSummary(db.groups[0]).rows[0].balance'),25000);
   el('payRecord').value='new';run('selectPaymentRecord()');
-  el('payMonth').value='2026-10';el('payAmount').value='10000';
+  el('payMonth').value='2026-10';el('payAllocationOrder').value='selected';el('payAmount').value='10000';
   await run('savePayment()');
   assert.equal(writes[2].payload.month,'2026-10-01');
   assert.ok(writes[2].filters.some(([k,v])=>k==='group_id' && v==='g1'));
@@ -67,7 +67,7 @@ test('record and edit save explicit month, scoped row and refresh both old and n
 
 test('fully paid months reject duplicate payments; invalid months and setup are excluded', async () => {
   const {run,el,writes}=paymentSetup();
-  run(`db.payments=[{id:'p',groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid:25000}]`);
+  run(`db.payments=[{id:'p',groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid:25000},{id:'sep',groupId:'g1',memberId:'m0',month:'2026-09',amountDue:25000,amountPaid:25000}]`);
   await run(`openPayment('m0')`);
   assert.equal(el('payRecord').value,'p');
   el('payRecord').value='';run('selectPaymentRecord()');
@@ -557,4 +557,47 @@ test('member table totals month balances, prioritizes arrears and hides settled 
   run("db.payments=[];db.auctions=[{groupId:'g1',winnerMemberId:'m0',liftMonth:1,month:'2026-09'}]");
   assert.equal(run('getManagerSummary(db.groups[0]).rows[0].outstanding.amount'),52000);
   assert.match(run('renderMemberTable(getManagerSummary(db.groups[0]))'),/Amount Due/);
+});
+
+
+test('one receipt covers two months, previews partial allocation and rejects excess', async () => {
+  const {run,el,context,writes} = paymentSetup();
+  const calls=[];
+  context.supabaseClient.rpc=async (name,args) => {
+    calls.push({name,args});
+    return {data:{payments:args.p_allocations.map((a,i)=>({id:'allocated-'+i,group_id:'g1',member_id:'m0',month:a.month+'-01',amount_due:25000,amount_paid:a.amount})),receipt:{id:'receipt1',group_id:'g1',member_id:'m0',amount:args.p_amount,date:args.p_date,mode:args.p_mode,allocations:args.p_allocations}}};
+  };
+  await run("openPayment('m0',true)");
+  assert.equal(el('payMonth').value,'2026-10');
+  assert.equal(el('payAmount').value,50000);
+  el('payAmount').value=30000;run('updatePaymentAllocation()');
+  assert.deepEqual(JSON.parse(run('JSON.stringify(paymentAllocationPlan().rows.map(r=>r.amount))')),[25000,5000]);
+  assert.match(el('payAllocationPreview').innerHTML,/September 2026/);
+  el('payAmount').value=50001;el('payMode').value='Cash';
+  await run('savePayment()');assert.equal(calls.length,0);assert.equal(writes.length,0);
+  el('payAmount').value=50000;await run('savePayment()');
+  assert.equal(calls.length,1);assert.equal(calls[0].name,'save_allocated_payment');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0].args.p_allocations)),[{month:'2026-09',amount:25000},{month:'2026-10',amount:25000}]);
+  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].outstanding.amount'),0);
+  assert.equal(run('db.transactions.length'),1);
+  el('payRecord').value='receipt:receipt1';run('selectPaymentRecord()');
+  el('payAmount').value=30000;await run('savePayment()');
+  assert.equal(calls[1].args.p_receipt,'receipt1');
+  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].outstanding.amount'),20000);
+  assert.equal(run('db.transactions.length'),1);
+});
+
+test('legacy excess is redistributed, month priority is adjustable, RPC failure preserves balances', async () => {
+  const {run,el,context}=paymentSetup();
+  run("db.payments=[{id:'legacy',groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid:50000}]");
+  await run("openPayment('m0')");
+  assert.equal(el('payRecord').value,'legacy');
+  assert.deepEqual(JSON.parse(run('JSON.stringify(paymentAllocationPlan().rows.map(r=>r.amount))')),[25000,25000]);
+  el('payAllocationOrder').value='selected';el('payAmount').value=30000;
+  assert.deepEqual(JSON.parse(run('JSON.stringify(paymentAllocationPlan().rows.map(r=>[r.month,r.amount]))')),[['2026-10',25000],['2026-09',5000]]);
+  context.supabaseClient.rpc=async()=>({error:{message:'Balances changed'}});
+  el('payMode').value='Cash';await run('savePayment()');
+  assert.equal(run('db.payments[0].amountPaid'),50000);
+  assert.match(context.window.notice,/Balances changed/);
+  assert.equal(run('paymentSaving'),false);
 });

@@ -1854,9 +1854,11 @@ function modals() {
         <div class="field"><label for="payRecord">Payment record</label>
           <select id="payRecord" onchange="selectPaymentRecord()"></select>
           <p class="small muted">Select an existing record to edit its total.</p></div>
-        <div class="field"><label for="payMonth">Contribution Month *</label>
+        <div class="field"><label id="payMonthLabel" for="payMonth">Pay dues through *</label>
           <select id="payMonth" required onchange="updatePaymentContext()"></select></div>
+        <div class="field"><label for="payAllocationOrder">Apply payment</label><select id="payAllocationOrder" onchange="updatePaymentAllocation()"><option value="oldest">Oldest unpaid month first</option><option value="selected">Selected month first, then earlier dues</option></select></div>
         <div id="payMonthContext" class="info-box" aria-live="polite"></div>
+        <div id="payAllocationPreview" aria-live="polite"></div>
         </section>
         <section class="payment-form-card" aria-labelledby="paymentDetailsTitle">
           <h4 id="paymentDetailsTitle">Payment details</h4>
@@ -1868,6 +1870,7 @@ function modals() {
 
           <input
             id="payAmount"
+            oninput="updatePaymentAllocation()"
             type="number">
         </div>
 
@@ -2317,7 +2320,8 @@ function paymentFormData() {
   const g = db.groups.find(g => g.id === activeGroup);
   const m = db.members.find(m => m.id === paymentMemberId.value && m.groupId === g?.id);
   const p = db.payments.find(p => p.id === document.getElementById('payRecord').value && p.groupId === g?.id && p.memberId === m?.id);
-  return {g, m, p};
+  const receipt = db.transactions.find(t => `receipt:${t.id}` === document.getElementById('payRecord').value && t.group_id === g?.id && t.member_id === m?.id);
+  return {g, m, p, receipt};
 }
 async function openPayment(mid, preferOutstanding = false) {
   const g = db.groups.find(g => g.id === activeGroup);
@@ -2327,49 +2331,75 @@ async function openPayment(mid, preferOutstanding = false) {
   if (!months.length) return toast('Payments begin from the confirmed chit start month.');
   paymentMemberId.value = mid;
   paymentMemberInfo.innerHTML = `<b>Member: ${escapeHtml(m.name)}</b>`;
-  const records = db.payments.filter(p => p.groupId === g.id && p.memberId === mid);
+  const receiptMonths = new Set(db.transactions.filter(t => t.group_id === g.id && t.member_id === mid && Array.isArray(t.allocations) && t.allocations.length > 1).flatMap(t => t.allocations.map(a => String(a.month).slice(0,7))));
+  const records = db.payments.filter(p => p.groupId === g.id && p.memberId === mid && !receiptMonths.has(p.month));
   document.getElementById('payRecord').innerHTML = '<option value="">Record additional payment</option>' + records.map(p =>
     `<option value="${escapeHtml(p.id)}">Edit ${escapeHtml(p.month)} &middot; ${money(p.amountPaid)} &middot; ${escapeHtml(p.date || 'No date')}</option>`).join('');
   document.getElementById('payMonth').innerHTML = months.map(ym => `<option value="${ym}">${escapeHtml(contributionMonthLabel(ym))}</option>`).join('');
-  const selectedMonth = preferOutstanding
-    ? months.find(ym => paymentForMonth(g, m, ym).balance > 0) || month
-    : month;
+  const selectedMonth = month;
   document.getElementById('payMonth').value = months.includes(selectedMonth) ? selectedMonth : months.at(-1);
   const summary = paymentForMonth(g, m, document.getElementById('payMonth').value);
-  document.getElementById('payRecord').value = summary.status === 'Paid' ? summary.records[0]?.id || '' : '';
+  document.getElementById('payRecord').value = summary.status === 'Paid' ? records.find(p => p.month === selectedMonth)?.id || '' : '';
+  document.getElementById('payRecord').innerHTML += db.transactions.filter(t => t.group_id === g.id && t.member_id === mid && Array.isArray(t.allocations) && t.allocations.length > 0).map(t => `<option value="receipt:${escapeHtml(t.id)}">Edit receipt ? ${money(t.amount)} ? ${escapeHtml(t.date || '')}</option>`).join('');
+  if (preferOutstanding && months.some(ym => paymentForMonth(g, m, ym).balance > 0)) document.getElementById('payRecord').value = '';
   selectPaymentRecord();
   modal('paymentModal');
 }
+function paymentAllocationPlan(amount = Number(payAmount.value)) {
+  const {g, m, p, receipt} = paymentFormData();
+  const through = document.getElementById('payMonth').value;
+  const original = receipt?.allocations || (p ? [{month:p.month, amount:p.amountPaid}] : []);
+  const months = validPaymentMonths(g).filter(ym => ym <= through);
+  if (document.getElementById('payAllocationOrder').value === 'selected') months.sort((a,b) => a === through ? -1 : b === through ? 1 : a.localeCompare(b));
+  let remaining = Math.max(0, amount || 0);
+  const rows = months.map(ym => {
+    const summary = paymentForMonth(g, m, ym);
+    const released = original.filter(a => String(a.month).slice(0,7) === ym).reduce((n,a) => n + Number(a.amount),0);
+    const balance = Math.max(0, summary.due - summary.paid + released);
+    const allocated = Math.min(remaining, balance);
+    remaining -= allocated;
+    return {month:ym, due:summary.due, paid:summary.paid, balance, amount:allocated};
+  });
+  return {rows, remaining, original, total:rows.reduce((n,r) => n+r.balance,0)};
+}
+function updatePaymentAllocation() {
+  const plan = paymentAllocationPlan();
+  const rows = plan.rows.filter(r => r.balance > 0);
+  document.getElementById('payAllocationPreview').innerHTML = `<p class="small muted">${plan.original.length ? 'Replaces the selected payment. ' : ''}One payment, allocated across these months.</p><dl class="payment-allocation-list">${rows.map(r => `<div><dt>${escapeHtml(contributionMonthLabel(r.month))}<small class="cell-detail">${money(r.balance)} outstanding</small></dt><dd>${money(r.amount)}</dd></div>`).join('')}</dl>${plan.remaining > 0 ? `<p class="due-text" role="status">${money(plan.remaining)} exceeds dues through the selected month. Choose a later month or reduce the amount.</p>` : ''}`;
+}
 function selectPaymentRecord() {
-  const {p} = paymentFormData();
-  if (p) document.getElementById('payMonth').value = p.month;
-  payDate.value = p?.date || new Date().toISOString().slice(0, 10);
-  payMode.value = p?.mode || '';
-  payReference.value = p?.reference || '';
-  payNotes.value = p?.notes || '';
+  const {p, receipt} = paymentFormData();
+  const record = receipt || p;
+  if (record) document.getElementById('payMonth').value = receipt ? receipt.allocations.map(a => String(a.month).slice(0,7)).sort().at(-1) : p.month;
+  payDate.value = record?.date || new Date().toISOString().slice(0, 10);
+  payMode.value = record?.mode || '';
+  payReference.value = record?.reference || '';
+  payNotes.value = record?.notes || '';
   updatePaymentContext();
-  if (p) payAmount.value = p.amountPaid;
+  if (record) payAmount.value = receipt ? receipt.amount : p.amountPaid;
+  updatePaymentAllocation();
 }
 function updatePaymentContext() {
-  const {g, m, p} = paymentFormData();
-  const ym = document.getElementById('payMonth').value;
-  const summary = paymentForMonth(g, m, ym);
-  const available = paymentForMonth(g, m, ym, p?.id ?? null);
-  document.getElementById('payMonthContext').innerHTML = `<b>${escapeHtml(contributionMonthLabel(ym))}</b>
-    <div>Required ${money(summary.due)}</div><div>Already Paid ${money(summary.paid)}</div>
-    <div>Remaining ${money(summary.balance)}</div>${summary.balance === 0 ? '<p>This month is fully paid.</p>' : ''}
-    ${p ? '<p class="small muted">The amount replaces the selected record. Other payments remain allocated to their months.</p>' : ''}`;
-  payAmount.value = available.balance;
+  const plan = paymentAllocationPlan(0);
+  document.getElementById('payMonthContext').innerHTML = `<b>Dues through ${escapeHtml(contributionMonthLabel(document.getElementById('payMonth').value))}</b><div>Total available to pay ${money(plan.total)}</div>`;
+  payAmount.value = plan.total;
+  updatePaymentAllocation();
 }
 async function savePayment() {
   if (paymentSaving) return;
-  const {g, m, p} = paymentFormData();
+  const {g, m, p, receipt} = paymentFormData();
   const ym = document.getElementById('payMonth').value;
   const amt = Number(payAmount.value);
   if (!g || !m || g.managerId !== currentUser()?.id) return toast('Member unavailable.');
   if (!validPaymentMonths(g).includes(ym)) return toast('Select a valid contribution month.');
   if (!Number.isFinite(amt) || amt <= 0) return toast('Enter a valid amount.');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(payDate.value) || !Number.isFinite(Date.parse(payDate.value)) || !payMode.value) return toast('Select payment date and mode.');
+  const plan = paymentAllocationPlan(amt);
+  if (plan.remaining > 0) return toast('Amount exceeds outstanding dues through the selected month.');
+  const allocations = plan.rows.filter(r => r.amount > 0).map(r => ({month:r.month, amount:r.amount}));
+  if (receipt || allocations.length > 1 || allocations[0]?.month !== ym || (p && p.month === ym && allocations[0]?.month !== p.month)) {
+    return saveAllocatedPayment(g, m, p, receipt, plan, allocations, amt);
+  }
   const available = paymentForMonth(g, m, ym, p?.id ?? null);
   // Existing excess can be corrected without inventing an advance-credit rule.
   const limit = p?.month === ym ? Math.max(available.balance, p.amountPaid) : available.balance;
@@ -2408,6 +2438,28 @@ async function savePayment() {
     toast('Unable to save payment: ' + (err.message || 'Reload and try again.'));
   } finally { paymentSaving = false; }
 }
+async function saveAllocatedPayment(g, m, p, receipt, plan, allocations, amount) {
+  paymentSaving = true;
+  try {
+    const months = [...new Set([...plan.rows.map(r => r.month), ...plan.original.map(a => String(a.month).slice(0,7))])];
+    const balances = months.map(ym => ({month:ym, ...paymentForMonth(g,m,ym)})).map(r => ({month:r.month, due:r.due, paid:r.paid}));
+    const {data, error} = await supabaseClient.rpc('save_allocated_payment', {
+      p_group:g.id, p_member:m.id, p_payment:p?.id || null, p_receipt:receipt?.id || null,
+      p_allocations:allocations, p_balances:balances, p_amount:amount,
+      p_date:payDate.value, p_mode:payMode.value, p_reference:payReference.value.trim(), p_notes:payNotes.value.trim()
+    });
+    if (error) throw error;
+    const affected = new Set(months);
+    db.payments = db.payments.filter(r => r.groupId !== g.id || r.memberId !== m.id || !affected.has(r.month));
+    db.payments.push(...data.payments.map(mapPayment));
+    if (receipt) db.transactions = db.transactions.filter(t => t.id !== receipt.id);
+    if (data.receipt) db.transactions.push(data.receipt);
+    closeModal('paymentModal'); render(); toast('Payment saved. Monthly balances updated.');
+  } catch (err) {
+    toast('Unable to save payment: ' + (err.message || 'Reload and try again.'));
+  } finally { paymentSaving = false; }
+}
+
 async function markPending(mid) {
   if (paymentSaving || !confirm('Reverse all payments allocated to this contribution month? Receipt history is retained.')) return;
   const g = db.groups.find(g => g.id === activeGroup);
