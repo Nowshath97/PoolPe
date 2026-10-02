@@ -92,3 +92,10 @@
   .activity-filters, .activity-filters label { width: 100%; }
   .report-list li { flex-wrap: wrap; }
 }
+
+.reminder-dialog { width: min(560px,calc(100% - 28px)); max-height: 90vh; overflow: auto; border: 1px solid var(--border); border-radius: 14px; padding: 24px; color: var(--text); }
+.reminder-dialog::backdrop { background: #183b4370; }
+.reminder-dialog h2 { font-size: 20px; margin: 0; }
+.reminder-dialog textarea { line-height: 1.5; }
+.reminder-dialog a.btn { text-decoration: none; display: inline-block; }
+.reminder-dialog [aria-disabled="true"] { opacity: .5; cursor: not-allowed; }

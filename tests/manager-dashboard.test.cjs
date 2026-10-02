@@ -69,7 +69,7 @@ function setup() {
     localStorage: { removeItem() {} }, confirm: () => false
   });
   context.window.history = { pushState(_a,_b,url) { context.window.location.hash=url; }, replaceState(_a,_b,url) { context.window.location.hash=url; } };
-  for (const file of ['app.js', 'manager-dashboard.js', 'member-statement.js', 'manager-pages.js', 'manager-router.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+  for (const file of ['app.js', 'manager-dashboard.js', 'member-statement.js', 'reminders.js', 'manager-pages.js', 'manager-router.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   const run = source => vm.runInContext(source, context);
   run(`
     month = '2026-09'; session = { user: { id: 'manager' } };
@@ -338,3 +338,26 @@ if (process.env.POOLPAY_PREVIEW) {
     db.payments=db.members.slice(0,5).map(m=>({groupId:'g1',memberId:m.id,month,amountDue:25000,amountPaid:25000,status:'Paid',date:'2026-09-20'})); render()`);
   fs.writeFileSync(process.env.POOLPAY_PREVIEW, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="manager-dashboard.css"></head><body>${el('app').innerHTML}</body></html>`);
 }
+
+
+test('reminders normalize phones and include partial payments plus previous dues', () => {
+  const { run } = setup();
+  assert.equal(run("reminderPhone('98765 43210')"), '919876543210');
+  assert.equal(run("reminderPhone('+44 7700 900123')"), '447700900123');
+  assert.equal(run("reminderPhone('0091 9876543210')"), '919876543210');
+  for (const phone of ['', '123', 'hello', '+91 9876543210 ext 2']) assert.equal(run(`reminderPhone(${JSON.stringify(phone)})`), '');
+  run(`month='2026-10'; db.payments=[{groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid:10000}];`);
+  assert.equal(run("buildMemberReminder('g1','m0').total"),40000);
+  assert.match(run("buildMemberReminder('g1','m0').text"), /INR 40,000/);
+  assert.equal(run("buildMemberReminder('g1','missing')"),null);
+  run("db.users[0].role='member'");
+  assert.equal(run("buildMemberReminder('g1','m0')"),null);
+});
+
+test('reminders are not eligible for setup groups or fully paid members', () => {
+  const { run } = setup();
+  run("db.groups[0].status='inactive'");
+  assert.equal(run("buildMemberReminder('g1','m0').eligible"),false);
+  run(`db.groups[0].status='active'; db.payments=[{groupId:'g1',memberId:'m0',month,amountDue:25000,amountPaid:25000}];`);
+  assert.equal(run("buildMemberReminder('g1','m0').eligible"),false);
+});
