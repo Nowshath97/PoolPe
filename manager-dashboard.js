@@ -191,6 +191,35 @@ function renderMemberFilters(s) {
   return `<div class="member-filters" role="group" aria-label="Filter members">${filters.map(([key, name, count]) => `<button class="filter-chip" data-filter="${key}" aria-pressed="${managerUI.filter === key}" onclick="setManagerFilter('${key}')">${name} <span>${count}</span></button>`).join('')}</div>`;
 }
 
+function positionMemberMenu(menu) {
+  if (!menu.open) return;
+  document.querySelectorAll('.row-menu[open]').forEach(other => {
+    if (other !== menu) other.open = false;
+  });
+  const anchor = menu.querySelector('summary').getBoundingClientRect();
+  const panel = menu.querySelector('div');
+  const bounds = panel.getBoundingClientRect();
+  const below = anchor.bottom + 6;
+  panel.style.left = `${Math.max(8, Math.min(anchor.right - bounds.width, window.innerWidth - bounds.width - 8))}px`;
+  panel.style.top = `${Math.max(8, below + bounds.height <= window.innerHeight - 8 ? below : anchor.top - bounds.height - 6)}px`;
+}
+
+function closeMemberMenus() {
+  document.querySelectorAll('.row-menu[open]').forEach(menu => { menu.open = false; });
+}
+document.addEventListener('click', event => {
+  if (!event.target.closest('.row-menu') || event.target.closest('.row-menu button')) closeMemberMenus();
+});
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  document.querySelector('.row-menu[open] summary')?.focus();
+  closeMemberMenus();
+});
+window.addEventListener('resize', closeMemberMenus);
+document.addEventListener('scroll', event => {
+  if (!event.target.closest?.('.row-menu')) closeMemberMenus();
+}, true);
+
 function renderMemberRow(r) {
   // IDs stay in data attributes instead of being interpolated into JavaScript.
   const id = escapeHtml(r.m.id);
@@ -201,10 +230,11 @@ function renderMemberRow(r) {
     <td>${r.started ? money(r.due) : '&mdash;'}${r.status === 'Partial' ? `<small class="cell-detail muted">${money(r.balance)} remaining</small>` : ''}</td><td>${r.started ? money(r.paid) : '&mdash;'}</td>
     <td><span class="pill ${r.lift ? 'winner' : 'neutral'}">${r.lift ? 'Bid Won' : 'Yet to Bid'}</span></td>
     <td><div class="member-actions"><button class="btn secondary" data-id="${id}" onclick="openPayment(this.dataset.id)" ${!r.started ? 'disabled' : ''}>${!r.started ? 'Not started' : r.status === 'Paid' ? 'Edit Payment' : 'Mark Paid'}</button>
-      <details class="row-menu"><summary aria-label="More actions for ${escapeHtml(r.m.name)}">&hellip;</summary><div>
+        <button class="reminder-button" data-group="${escapeHtml(r.m.groupId)}" data-id="${id}" onclick="openMemberReminder(this.dataset.group,this.dataset.id)" title="Prepare a WhatsApp reminder"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4M12 2V1"/></svg><span>Remind</span></button>
+      <details class="row-menu" ontoggle="positionMemberMenu(this)"><summary aria-label="More actions for ${escapeHtml(r.m.name)}">&hellip;</summary><div>
         <button class="linkbtn" data-id="${id}" onclick="openHistory(this.dataset.id)">View Details</button>
         <button class="linkbtn" data-group="${escapeHtml(r.m.groupId)}" data-id="${id}" onclick="openMemberStatement(this.dataset.group,this.dataset.id)">View statement</button>
-        <button class="reminder-button" data-group="${escapeHtml(r.m.groupId)}" data-id="${id}" onclick="openMemberReminder(this.dataset.group,this.dataset.id)" title="Prepare a WhatsApp reminder"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4M12 2V1"/></svg><span>Remind</span></button>
+
         ${r.payment?.status === 'Paid' ? `<button class="linkbtn due-text" data-id="${id}" onclick="markPending(this.dataset.id)">Mark Pending</button>` : ''}</div></details></div></td></tr>`;
 }
 
