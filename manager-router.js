@@ -72,12 +72,12 @@ function renderManagerShell(u, route, content) {
   const selected = route.page === 'group' ? 'groups' : route.page;
   const links = [['dashboard', 'Dashboard', '▦'], ['groups', 'Groups', '◫'], ['reports', 'Reports', '▤'], ['activity', 'Activity', '◷']];
   const link = ([page, label, icon]) => `<a href="#/${page}" ${selected === page ? 'aria-current="page"' : ''}><span aria-hidden="true">${icon}</span>${label}</a>`;
-  return `<div class="manager-portal"><header class="manager-mobile-header"><img src="logo-teal.png" alt="PoolPay"><button id="managerMenuButton" class="btn secondary" aria-controls="managerSidebar" aria-expanded="false" onclick="toggleManagerDrawer()" aria-label="Open navigation">☰</button></header>
+  return `<div class="manager-portal"><header class="manager-topbar"><div class="manager-topbar-mobile"><button id="managerMenuButton" class="btn secondary" aria-controls="managerSidebar" aria-expanded="false" onclick="toggleManagerDrawer()" aria-label="Open navigation">&#9776;</button><a href="#/dashboard"><img src="logo-teal.png" alt="PoolPay"></a></div>
+    <details class="manager-account" id="managerAccount"><summary aria-label="Account options for ${escapeHtml(u.name || 'Manager')}"><span class="manager-avatar">${escapeHtml((u.name || 'M').slice(0, 1))}</span><span class="manager-account-name"><b>${escapeHtml(u.name || 'Manager')}</b><small>Manager</small></span><span aria-hidden="true">&#8964;</span></summary><div class="manager-account-dropdown"><p>Signed in as<strong>${escapeHtml(u.email || u.name || 'Manager')}</strong></p><a href="#/settings">Profile &amp; settings</a><button type="button" onclick="logout()">Logout</button></div></details></header>
     <button id="managerNavOverlay" class="nav-overlay" aria-label="Close navigation" onclick="toggleManagerDrawer(false)" hidden></button>
     <aside id="managerSidebar" class="manager-sidebar"><a href="#/dashboard" class="portal-logo"><img src="logo-teal.png" alt="PoolPay"></a>
       <nav aria-label="Manager navigation">${links.map(link).join('')}</nav>
-      <div class="sidebar-bottom"><div class="manager-profile"><span class="manager-avatar">${escapeHtml((u.name || 'M').slice(0, 1))}</span><div><b>${escapeHtml(u.name)}</b><small>Manager</small></div></div>
-      <nav aria-label="Account navigation">${link(['settings', 'Settings', '⚙'])}<button onclick="logout()"><span aria-hidden="true">↪</span>Logout</button></nav></div></aside>
+      <div class="sidebar-bottom"><nav aria-label="Settings navigation">${link(['settings', 'Settings', '&#9881;'])}</nav></div></aside>
     <main class="manager-main"><div class="manager-dashboard">${content}</div></main></div>`;
 }
 
@@ -87,4 +87,19 @@ window.addEventListener('hashchange', () => {
 });
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && document.getElementById('managerMenuButton')?.getAttribute('aria-expanded') === 'true') toggleManagerDrawer(false);
+});
+
+// Native details retains keyboard navigation; dismiss without altering sign-out behavior.
+document.addEventListener('click', event => {
+  if (!event.target.closest('.manager-account')) {
+    const account = document.getElementById('managerAccount');
+    if (account) account.open = false;
+  }
+});
+document.addEventListener('keydown', event => {
+  const account = document.getElementById('managerAccount');
+  if (event.key === 'Escape' && account?.open) {
+    account.open = false;
+    account.querySelector('summary')?.focus();
+  }
 });

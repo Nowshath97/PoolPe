@@ -1,4 +1,23 @@
 .manager-portal { min-height: 100vh; }
+.manager-topbar { position: sticky; top: 0; z-index: 24; margin-left: 240px; min-height: 72px; padding: 12px clamp(18px,3vw,48px); display: flex; align-items: center; justify-content: flex-end; gap: 12px; background: #fff; border-bottom: 1px solid var(--border); }
+.manager-topbar-mobile { display: none; }
+.manager-account { position: relative; }
+.manager-account > summary { display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; min-height: 44px; border-radius: 8px; padding: 3px 6px; }
+.manager-account > summary::-webkit-details-marker { display: none; }
+.manager-account-name { display: grid; gap: 3px; font-size: 13px; }
+.manager-account-name b { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.manager-account-name small { color: var(--muted); font-size: 11px; }
+.manager-account-dropdown { position: absolute; right: 0; top: calc(100% + 10px); width: min(270px,calc(100vw - 36px)); background: white; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px #183b431a; padding: 8px; }
+.manager-account-dropdown p { margin: 0 0 6px; padding: 10px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+.manager-account-dropdown strong { display: block; margin-top: 5px; font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
+.manager-account-dropdown a,.manager-account-dropdown button { display: block; width: 100%; padding: 12px 10px; border: 0; border-radius: 6px; background: none; text-decoration: none; text-align: left; font: inherit; font-size: 13px; color: var(--text); cursor: pointer; }
+.manager-account-dropdown a:hover,.manager-account-dropdown button:hover { background: #f0f8f5; }
+@media(max-width:850px) {
+  .manager-topbar { margin-left: 0; padding: 10px 18px; justify-content: space-between; }
+  .manager-topbar-mobile { display: flex; align-items: center; gap: 10px; }
+  .manager-topbar-mobile img { width: 100px; height: 40px; object-fit: contain; }
+  .manager-account-name { display: none; }
+}
 .manager-sidebar { position: fixed; inset: 0 auto 0 0; width: 240px; padding: 26px 16px 20px; background: #fff; border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 30; overflow-y: auto; }
 .portal-logo { display: block; padding: 0 14px 30px; }
 .portal-logo img { width: 132px; height: 48px; object-fit: contain; }
