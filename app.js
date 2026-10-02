@@ -1830,18 +1830,18 @@ function modals() {
 
     <div
       id="paymentModal"
-      class="modal">
+      class="modal" role="dialog" aria-modal="true" aria-labelledby="paymentModalTitle">
 
-      <div class="dialog">
-
-        <h3>
-          Record Payment
-        </h3>
-
-        <p class="muted small">
-          Choose the contribution month this payment belongs to.
-        </p>
-
+      <div class="dialog payment-dialog">
+        <header class="payment-dialog-header">
+          <div><h3 id="paymentModalTitle">Record Payment</h3>
+          <p class="muted small">Choose a contribution month and record the payment received.</p></div>
+          <button class="payment-close" type="button" aria-label="Close payment dialog" onclick="closeModal('paymentModal')">&times;</button>
+        </header>
+        <div class="payment-dialog-body">
+        <div class="payment-card-grid">
+        <section class="payment-form-card" aria-labelledby="paymentContributionTitle">
+          <h4 id="paymentContributionTitle">Contribution</h4>
         <div
           id="paymentMemberInfo"
           class="info-box">
@@ -1853,12 +1853,16 @@ function modals() {
 
         <div class="field"><label for="payRecord">Payment record</label>
           <select id="payRecord" onchange="selectPaymentRecord()"></select>
-          <p class="small muted">Existing records may contain several receipts. Editing corrects the total for that record.</p></div>
+          <p class="small muted">Select an existing record to edit its total.</p></div>
         <div class="field"><label for="payMonth">Contribution Month *</label>
           <select id="payMonth" required onchange="updatePaymentContext()"></select></div>
         <div id="payMonthContext" class="info-box" aria-live="polite"></div>
+        </section>
+        <section class="payment-form-card" aria-labelledby="paymentDetailsTitle">
+          <h4 id="paymentDetailsTitle">Payment details</h4>
+        <div class="payment-fields-grid">
         <div class="field">
-          <label>
+          <label for="payAmount">
             Amount Paid *
           </label>
 
@@ -1868,7 +1872,7 @@ function modals() {
         </div>
 
         <div class="field">
-          <label>
+          <label for="payDate">
             Payment Date *
           </label>
 
@@ -1882,7 +1886,7 @@ function modals() {
         </div>
 
         <div class="field">
-          <label>
+          <label for="payMode">
             Mode *
           </label>
 
@@ -1902,7 +1906,7 @@ function modals() {
         </div>
 
         <div class="field">
-          <label>
+          <label for="payReference">
             Reference
           </label>
 
@@ -1910,8 +1914,8 @@ function modals() {
             id="payReference">
         </div>
 
-        <div class="field">
-          <label>
+        <div class="field payment-notes">
+          <label for="payNotes">
             Notes
           </label>
 
@@ -1921,7 +1925,11 @@ function modals() {
           </textarea>
         </div>
 
-        <div class="actions">
+        </div>
+        </section>
+        </div>
+        </div>
+        <footer class="actions payment-dialog-actions">
 
           <button
             class="btn secondary"
@@ -1937,7 +1945,7 @@ function modals() {
             Record Payment
           </button>
 
-        </div>
+        </footer>
 
       </div>
     </div>

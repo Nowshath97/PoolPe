@@ -11,3 +11,34 @@ textarea{font:inherit}.field textarea{width:100%;padding:10px;border:1px solid #
 
 /* Shared keyboard focus follows the brand palette. */
 :where(a,button,input,select,textarea,summary):focus-visible{outline:3px solid var(--brand);outline-offset:3px}
+
+/* Keep app dialogs above the manager navigation. */
+.modal { z-index: 100; }
+#paymentModal { padding: 20px; }
+#paymentModal .payment-dialog { width: min(940px, 100%); max-height: calc(100dvh - 40px); padding: 0; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 80px rgba(24,59,67,.2); }
+.payment-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 24px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.payment-dialog-header h3 { margin: 0 0 6px; font-size: 22px; }
+.payment-dialog-header p { margin: 0; line-height: 1.5; }
+.payment-close { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border: 1px solid var(--border); border-radius: 9px; background: #fff; color: var(--muted); font-size: 24px; cursor: pointer; }
+.payment-dialog-body { padding: 20px 24px; overflow-y: auto; min-height: 0; background: var(--bg); }
+.payment-card-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 18px; align-items: start; }
+.payment-form-card { min-width: 0; padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+.payment-form-card h4 { margin: 0 0 16px; font-size: 16px; }
+.payment-form-card .field { margin: 0 0 16px; }
+.payment-form-card .field p { margin: 8px 0 0; line-height: 1.5; }
+.payment-form-card .info-box { margin-bottom: 16px; line-height: 1.5; }
+.payment-form-card #payMonthContext { margin-bottom: 0; }
+.payment-fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+.payment-fields-grid .payment-notes { grid-column: 1 / -1; margin-bottom: 0; }
+.payment-dialog-actions { margin: 0; padding: 16px 24px; border-top: 1px solid var(--border); background: #fff; flex-shrink: 0; }
+@media (max-width: 720px) {
+  #paymentModal { padding: 12px; }
+  #paymentModal .payment-dialog { max-height: calc(100dvh - 24px); }
+  .payment-card-grid { grid-template-columns: 1fr; gap: 14px; }
+  .payment-dialog-header { padding: 18px; }
+  .payment-dialog-body { padding: 14px; }
+  .payment-dialog-actions { padding: 14px 18px; }
+}
+@media (max-width: 420px) {
+  .payment-fields-grid { grid-template-columns: 1fr; }
+}
