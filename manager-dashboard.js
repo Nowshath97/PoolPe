@@ -61,6 +61,29 @@ function managerGroup() {
     : null;
 }
 
+// Reuse monthly balances and historical obligation snapshots; never add the
+// monthly contribution again to its unpaid balance.
+function calculateMemberOutstanding(g, m) {
+  const current = paymentForMonth(g, m, month);
+  const previous = duesFor(g, m);
+  const items = [...previous.items];
+  if (current.balance > 0) items.push({ ym: month, amount: current.balance,
+    amountDue: current.due, amountPaid: current.paid });
+  const amount = previous.amount + current.balance;
+  const status = !groupHasStarted(g) ? 'Not started'
+    : previous.amount > 0 ? 'Overdue'
+    : amount > 0 ? (current.paid > 0 ? 'Partially Paid' : 'Due') : 'Paid';
+  return { amount, items, status };
+}
+
+function outstandingCaption(r) {
+  if (!r.outstanding.amount) return 'No dues';
+  if (r.outstanding.items.length === 1 && r.outstanding.items[0].amountPaid > 0)
+    return `${money(r.outstanding.items[0].amountPaid)} paid`;
+  return r.outstanding.items.map(item => new Date(`${item.ym}-01T12:00:00`)
+    .toLocaleDateString('en-IN', { month: 'short' })).join(' + ');
+}
+
 function getManagerSummary(g) {
   const cycle = monthIndex(g, month);
   const started = groupHasStarted(g);
@@ -74,13 +97,14 @@ function getManagerSummary(g) {
     const balance = Math.max(0, due - paid);
     const dues = duesFor(g, m);
     const lift = liftFor(g.id, m.id);
-    return { m, payment, due, paid, balance, dues, lift, started,
-      status: !started ? 'Not started' : balance > 0 ? (paid > 0 ? 'Partial' : 'Pending') : due > 0 || paid > 0 ? 'Paid' : 'Not due' };
+    const outstanding = calculateMemberOutstanding(g, m);
+    return { m, payment, due, paid, balance, dues, lift, started, outstanding,
+      status: outstanding.status };
   });
   const expected = rows.reduce((sum, r) => sum + r.due, 0);
   const collected = rows.reduce((sum, r) => sum + r.paid, 0);
   const pending = rows.reduce((sum, r) => sum + r.balance, 0);
-  const paidCount = rows.filter(r => r.status === 'Paid').length;
+  const paidCount = rows.filter(r => r.started && r.due > 0 && r.balance === 0).length;
   const pendingCount = rows.filter(r => r.balance > 0).length;
   const duesCount = rows.filter(r => r.dues.amount > 0).length;
   const previousDues = rows.reduce((sum, r) => sum + r.dues.amount, 0);
@@ -188,7 +212,7 @@ function memberMatchesSearch(name, term) {
 
 function renderMemberFilters(s) {
   if (!s.started) return `<div class="member-filters"><button class="filter-chip" data-filter="all" aria-pressed="true" onclick="setManagerFilter('all')">All <span>${s.rows.length}</span></button><span class="pill neutral">Chit not started</span></div>`;
-  const filters = [['all', 'All', s.rows.length], ['paid', 'Paid', s.paidCount], ['pending', 'Pending', s.pendingCount], ['dues', 'With dues', s.duesCount], ['bid', 'Bid completed', s.bidDone], ['eligible', 'Yet to bid', s.eligible]];
+  const filters = [['all', 'All', s.rows.length], ['paid', 'Paid', s.rows.filter(r => r.status === 'Paid').length], ['pending', 'Pending', s.pendingCount], ['dues', 'With dues', s.duesCount], ['bid', 'Bid completed', s.bidDone], ['eligible', 'Yet to bid', s.eligible]];
   return `<div class="member-filters" role="group" aria-label="Filter members">${filters.map(([key, name, count]) => `<button class="filter-chip" data-filter="${key}" aria-pressed="${managerUI.filter === key}" onclick="setManagerFilter('${key}')">${name} <span>${count}</span></button>`).join('')}</div>`;
 }
 
@@ -226,12 +250,11 @@ function renderMemberRow(r) {
   const id = escapeHtml(r.m.id);
   return `<tr data-member-name="${escapeHtml(r.m.name)}" data-paid="${r.status === 'Paid'}" data-pending="${r.balance > 0}" data-dues="${r.dues.amount > 0}" data-bid="${!!r.lift}" data-eligible="${!r.lift}">
     <td><button class="linkbtn" data-id="${id}" onclick="openHistory(this.dataset.id)"><b>${escapeHtml(r.m.name)}</b></button></td>
-    <td><span class="pill ${r.status === 'Paid' ? 'paid' : r.balance ? 'warning' : 'neutral'}">${r.status}</span></td>
-    <td>${!r.started ? '&mdash;' : r.dues.amount ? `<button class="linkbtn due-text" data-id="${id}" onclick="openDues(this.dataset.id)">${money(r.dues.amount)}<small class="cell-detail">${r.dues.months} month(s)</small></button>` : '<span class="pill paid">No dues</span>'}</td>
-    <td>${r.started ? money(r.due) : '&mdash;'}</td><td>${!r.started ? '&mdash;' : r.balance ? money(r.balance) : '<span class="pill paid">No dues</span>'}</td>
+    <td><span class="pill ${r.status === 'Paid' ? 'paid' : r.status === 'Overdue' ? 'overdue' : r.outstanding.amount ? 'warning' : 'neutral'}">${r.status}</span></td>
+    <td>${!r.started ? '&mdash;' : `<button class="linkbtn amount-due" data-id="${id}" onclick="openDues(this.dataset.id)">${money(r.outstanding.amount)}<small class="cell-detail">${escapeHtml(outstandingCaption(r))}</small></button>`}</td>
     <td><span class="pill ${r.lift ? 'winner' : 'neutral'}">${r.lift ? 'Bid Won' : 'Yet to Bid'}</span></td>
-    <td><div class="member-actions"><button class="btn secondary" data-id="${id}" onclick="openPayment(this.dataset.id)" ${!r.started ? 'disabled' : ''}>${!r.started ? 'Not started' : r.status === 'Paid' ? 'Edit Payment' : 'Record Payment'}</button>
-        <button class="reminder-button" data-group="${escapeHtml(r.m.groupId)}" data-id="${id}" onclick="openMemberReminder(this.dataset.group,this.dataset.id)" title="Prepare a WhatsApp reminder"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4M12 2V1"/></svg><span>Remind</span></button>
+    <td><div class="member-actions"><button class="btn secondary" data-id="${id}" onclick="openPayment(this.dataset.id, true)" ${!r.started ? 'disabled' : ''}>${!r.started ? 'Not started' : r.outstanding.amount === 0 ? 'Edit/View Payment' : 'Record Payment'}</button>
+        ${r.outstanding.amount > 0 ? `<button class="reminder-button" data-group="${escapeHtml(r.m.groupId)}" data-id="${id}" onclick="openMemberReminder(this.dataset.group,this.dataset.id)" title="Prepare a WhatsApp reminder"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4M12 2V1"/></svg><span>Remind</span></button>` : ''}
       <details class="row-menu" ontoggle="positionMemberMenu(this)"><summary aria-label="More actions for ${escapeHtml(r.m.name)}">&hellip;</summary><div>
         <button class="linkbtn" data-id="${id}" onclick="openHistory(this.dataset.id)">View Details</button>
         <button class="linkbtn" data-group="${escapeHtml(r.m.groupId)}" data-id="${id}" onclick="openMemberStatement(this.dataset.group,this.dataset.id)">View statement</button>
@@ -244,8 +267,8 @@ function renderMemberTable(s) {
     <div class="toolbar">${pendingReminderButton(s)}<button class="btn secondary" onclick="modal('memberModal')">+ Add Member</button></div></div>
     ${!s.rows.length ? '<div class="empty"><p>No members have been added yet.</p><button class="btn primary" onclick="modal(\'memberModal\')">Add Member</button></div>' : `
       ${renderMemberFilters(s)}<div class="member-search"><label class="sr-only" for="memberSearch">Search members by name</label><input id="memberSearch" type="search" placeholder="Search members" value="${escapeHtml(managerUI.search)}" oninput="filterMemberRows(this.value)"><span id="memberResultCount" class="small muted" role="status"></span></div>
-      <div class="table-wrap" tabindex="0" aria-label="Member payments"><table><thead><tr><th scope="col">Member</th><th scope="col">Payment</th><th scope="col">Previous Dues</th><th scope="col">Monthly Amount</th><th scope="col">This Month Due</th><th scope="col">Bid Status</th><th scope="col">Action</th></tr></thead>
-      <tbody id="managerMemberRows">${s.rows.map(renderMemberRow).join('')}<tr id="noMemberMatches" hidden><td colspan="7" role="status">No members match this search and filter.</td></tr></tbody></table></div>
+      <div class="table-wrap" tabindex="0" aria-label="Member payments"><table><thead><tr><th scope="col">Member</th><th scope="col">Status</th><th scope="col">Amount Due</th><th scope="col">Bid Status</th><th scope="col">Actions</th></tr></thead>
+      <tbody id="managerMemberRows">${[...s.rows].sort((a, b) => ({ Overdue: 0, 'Partially Paid': 1, Due: 2, Paid: 3 }[a.status] ?? 4) - ({ Overdue: 0, 'Partially Paid': 1, Due: 2, Paid: 3 }[b.status] ?? 4)).map(renderMemberRow).join('')}<tr id="noMemberMatches" hidden><td colspan="5" role="status">No members match this search and filter.</td></tr></tbody></table></div>
       <button id="expandMemberList" class="btn secondary expand-members" onclick="expandManagerMembers()" hidden>View all members</button>`}</section>`;
 }
 

@@ -8,9 +8,9 @@ const root = path.resolve(__dirname, '..');
 test('monthly balances A-H include multiple rows, excess, allocation dates and post-lift amounts', () => {
   const {run} = setup();
   run(`month='2026-10'`);
-  for (const [amounts, status, balance] of [ [[], 'Pending',25000], [[10000],'Partial',15000],
+  for (const [amounts, status, balance] of [ [[], 'Due',25000], [[10000],'Partially Paid',15000],
     [[25000],'Paid',0], [[10000,15000],'Paid',0], [[30000],'Paid',0] ]) {
-    run(`db.payments=${JSON.stringify(amounts.map((amountPaid,i) => ({id:'p'+i, groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid,date:'2026-11-05'})))}`);
+    run(`db.payments=[{id:'sep-paid',groupId:'g1',memberId:'m0',month:'2026-09',amountDue:25000,amountPaid:25000}, ...${JSON.stringify(amounts.map((amountPaid,i) => ({id:'p'+i, groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid,date:'2026-11-05'})))}]`);
     const row = run('getManagerSummary(db.groups[0]).rows[0]');
     assert.equal(row.status,status);
     assert.equal(row.balance,balance);
@@ -90,7 +90,7 @@ test('reverse clears every record for selected month and leaves previous month i
   context.supabaseClient={from(){const q={update(){return q},eq(k,v){filters.push([k,v]);return q},async select(){return {data:['a','b'].map(id=>({id,group_id:'g1',member_id:'m0',month:'2026-10-01',amount_paid:0,amount_due:25000,status:'pending'}))}}};return q}};
   await run(`markPending('m0')`);
   assert.ok(filters.some(([k,v])=>k==='month' && v==='2026-10-01'));
-  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].status'),'Pending');
+  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].status'),'Overdue');
   assert.equal(run('getManagerSummary(db.groups[0]).rows[0].balance'),25000);
   assert.equal(run('duesFor(db.groups[0],db.members[0]).amount'),15000);
 });
@@ -531,4 +531,30 @@ test('home upcoming uses confirmed start dates only within the next seven days',
   assert.equal(run("buildManagerHome(currentUser(),new Date('2026-10-02T06:00:00Z')).upcoming.length"),1);
   run("db.groups[0].status='inactive'");
   assert.equal(run("buildManagerHome(currentUser(),new Date('2026-10-02T06:00:00Z')).upcoming.length"),0);
+});
+
+
+test('member table totals month balances, prioritizes arrears and hides settled reminders', () => {
+  const {run} = setup();
+  run("month='2026-10'");
+  const payment = (ym, paid) => ({id:ym,groupId:'g1',memberId:'m0',month:ym,amountDue:25000,amountPaid:paid});
+  for (const [records, status, amount] of [
+    [[payment('2026-09',25000)], 'Due',25000],
+    [[payment('2026-09',25000),payment('2026-10',25000)],'Paid',0],
+    [[], 'Overdue',50000],
+    [[payment('2026-10',25000)],'Overdue',25000],
+    [[payment('2026-09',25000),payment('2026-10',10000)],'Partially Paid',15000]
+  ]) {
+    run(`db.payments=${JSON.stringify(records)}`);
+    const row = run('getManagerSummary(db.groups[0]).rows[0]');
+    assert.equal(row.status,status);
+    assert.equal(row.outstanding.amount,amount);
+    const html = run('renderMemberRow(getManagerSummary(db.groups[0]).rows[0])');
+    assert.equal(html.includes('reminder-button'),amount > 0);
+    assert.equal((html.match(/<td>/g)||[]).length,5);
+    if (!amount) assert.match(html,/No dues/);
+  }
+  run("db.payments=[];db.auctions=[{groupId:'g1',winnerMemberId:'m0',liftMonth:1,month:'2026-09'}]");
+  assert.equal(run('getManagerSummary(db.groups[0]).rows[0].outstanding.amount'),52000);
+  assert.match(run('renderMemberTable(getManagerSummary(db.groups[0]))'),/Amount Due/);
 });

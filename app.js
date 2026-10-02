@@ -2311,7 +2311,7 @@ function paymentFormData() {
   const p = db.payments.find(p => p.id === document.getElementById('payRecord').value && p.groupId === g?.id && p.memberId === m?.id);
   return {g, m, p};
 }
-async function openPayment(mid) {
+async function openPayment(mid, preferOutstanding = false) {
   const g = db.groups.find(g => g.id === activeGroup);
   const m = db.members.find(m => m.id === mid && m.groupId === g?.id);
   if (!m || g.managerId !== currentUser()?.id) return toast('Member unavailable.');
@@ -2323,8 +2323,11 @@ async function openPayment(mid) {
   document.getElementById('payRecord').innerHTML = '<option value="">Record additional payment</option>' + records.map(p =>
     `<option value="${escapeHtml(p.id)}">Edit ${escapeHtml(p.month)} &middot; ${money(p.amountPaid)} &middot; ${escapeHtml(p.date || 'No date')}</option>`).join('');
   document.getElementById('payMonth').innerHTML = months.map(ym => `<option value="${ym}">${escapeHtml(contributionMonthLabel(ym))}</option>`).join('');
-  document.getElementById('payMonth').value = months.includes(month) ? month : months.at(-1);
-  const summary = paymentForMonth(g, m, month);
+  const selectedMonth = preferOutstanding
+    ? months.find(ym => paymentForMonth(g, m, ym).balance > 0) || month
+    : month;
+  document.getElementById('payMonth').value = months.includes(selectedMonth) ? selectedMonth : months.at(-1);
+  const summary = paymentForMonth(g, m, document.getElementById('payMonth').value);
   document.getElementById('payRecord').value = summary.status === 'Paid' ? summary.records[0]?.id || '' : '';
   selectPaymentRecord();
   modal('paymentModal');
@@ -2431,16 +2434,14 @@ function openDues(mid) {
     (m) => m.id === mid
   );
 
-  const d = duesFor(g, m);
-
   duesTitle.textContent =
     m.name +
     " · Outstanding Dues";
 
   const rows = validPaymentMonths(g).map(ym => ({ym, ...paymentForMonth(g, m, ym)}));
-  duesBody.innerHTML = `<p>Total previous dues: <b>${money(d.amount)}</b></p><div class="table-wrap"><table>
-    <thead><tr><th>Contribution Month</th><th>Required</th><th>Paid</th><th>Due</th></tr></thead>
-    <tbody>${rows.map(r => `<tr><td>${escapeHtml(r.ym)}</td><td>${money(r.due)}</td><td>${money(r.paid)}</td><td>${r.balance ? money(r.balance) : 'No dues'}</td></tr>`).join('')}</tbody></table></div>`;
+  duesBody.innerHTML = `<p>Total outstanding: <b>${money(rows.reduce((sum, r) => sum + r.balance, 0))}</b></p><div class="table-wrap"><table>
+    <thead><tr><th>Contribution Month</th><th>Required</th><th>Paid</th><th>Due</th><th>Status</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td>${escapeHtml(contributionMonthLabel(r.ym))}</td><td>${money(r.due)}</td><td>${money(r.paid)}</td><td>${r.balance ? money(r.balance) : 'No dues'}</td><td>${r.balance ? (r.ym < month ? 'Overdue' : r.paid > 0 ? 'Partially Paid' : 'Due') : 'Paid'}</td></tr>`).join('')}</tbody></table></div>`;
 
   modal("duesModal");
 }

@@ -59,7 +59,7 @@ progress::-webkit-progress-bar { background: #e4eeea; border-radius: 20px; }
 .filter-chip[aria-pressed="true"] { color: var(--brand2); background: #e8f4f0; border-color: #8bbfb4; font-weight: 700; }
 .member-search { display: flex; align-items: center; gap: 16px; justify-content: space-between; margin-bottom: 18px; }
 .member-search input { width: min(100%, 340px); min-height: 44px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
-.manager-dashboard table { min-width: 850px; }
+.manager-dashboard table { min-width: 700px; }
 .manager-dashboard th { font-size: 12px; background: #f6f9f8; padding: 13px 10px; }
 .manager-dashboard td { padding: 15px 10px; }
 .manager-dashboard td:first-child { min-width: 150px; }
@@ -114,3 +114,7 @@ progress::-webkit-progress-bar { background: #e4eeea; border-radius: 20px; }
   .group-choice > span { grid-column: 1; }
   .collection-amount strong { display: block; margin-bottom: 6px; }
 }
+
+.manager-dashboard .pill.overdue { color: var(--red, #b42318); background: #fef3f2; }
+.amount-due { text-align: left; font-weight: 700; }
+.amount-due .cell-detail { font-weight: 400; }
