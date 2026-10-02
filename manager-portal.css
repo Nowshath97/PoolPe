@@ -99,3 +99,16 @@
 .reminder-dialog textarea { line-height: 1.5; }
 .reminder-dialog a.btn { text-decoration: none; display: inline-block; }
 .reminder-dialog [aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.payment-row-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.reminder-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 9px 12px; border: 1px solid #e8c98a; border-radius: 8px; background: #fff5df; color: #80520b; font: inherit; font-size: 13px; font-weight: 650; line-height: 1.4; white-space: nowrap; cursor: pointer; }
+.reminder-button svg { flex-shrink: 0; }
+.reminder-button:hover:not(:disabled) { background: #ffebc0; border-color: #c8973e; }
+
+.reminder-button:disabled { opacity: .5; cursor: not-allowed; }
+.reminder-queue { width: min(740px,calc(100% - 28px)); }
+.reminder-recipient-list { list-style: none; margin: 20px 0; padding: 0; }
+.reminder-recipient-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); padding: 14px 0; }
+.reminder-recipient-list small { display: block; margin-top: 5px; color: var(--muted); }
+.reminder-export summary { cursor: pointer; font-weight: 600; }
+.reminder-export textarea { display: block; width: 100%; box-sizing: border-box; margin: 10px 0; padding: 10px; border: 1px solid var(--border); border-radius: 6px; }
+@media(max-width:520px) { .reminder-recipient-list li { align-items: flex-start; flex-direction: column; gap: 10px; } }

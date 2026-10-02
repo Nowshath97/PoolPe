@@ -204,13 +204,13 @@ function renderMemberRow(r) {
       <details class="row-menu"><summary aria-label="More actions for ${escapeHtml(r.m.name)}">&hellip;</summary><div>
         <button class="linkbtn" data-id="${id}" onclick="openHistory(this.dataset.id)">View Details</button>
         <button class="linkbtn" data-group="${escapeHtml(r.m.groupId)}" data-id="${id}" onclick="openMemberStatement(this.dataset.group,this.dataset.id)">View statement</button>
-        <button class="linkbtn" data-group="${escapeHtml(r.m.groupId)}" data-id="${id}" onclick="openMemberReminder(this.dataset.group,this.dataset.id)">WhatsApp reminder</button>
+        <button class="reminder-button" data-group="${escapeHtml(r.m.groupId)}" data-id="${id}" onclick="openMemberReminder(this.dataset.group,this.dataset.id)" title="Prepare a WhatsApp reminder"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4M12 2V1"/></svg><span>Remind</span></button>
         ${r.payment?.status === 'Paid' ? `<button class="linkbtn due-text" data-id="${id}" onclick="markPending(this.dataset.id)">Mark Pending</button>` : ''}</div></details></div></td></tr>`;
 }
 
 function renderMemberTable(s) {
   return `<section class="card member-overview" id="managerMembers"><div class="section-title"><div><h2>Member Overview</h2><p class="small muted">${s.rows.length} of ${MAX_GROUP_MEMBERS} member places filled</p></div>
-    <button class="btn secondary" onclick="modal('memberModal')">+ Add Member</button></div>
+    <div class="toolbar">${pendingReminderButton(s)}<button class="btn secondary" onclick="modal('memberModal')">+ Add Member</button></div></div>
     ${!s.rows.length ? '<div class="empty"><p>No members have been added yet.</p><button class="btn primary" onclick="modal(\'memberModal\')">Add Member</button></div>' : `
       ${renderMemberFilters(s)}<div class="member-search"><label class="sr-only" for="memberSearch">Search members by name</label><input id="memberSearch" type="search" placeholder="Search members" value="${escapeHtml(managerUI.search)}" oninput="filterMemberRows(this.value)"><span id="memberResultCount" class="small muted" role="status"></span></div>
       <div class="table-wrap" tabindex="0" aria-label="Member payments"><table><thead><tr><th scope="col">Member</th><th scope="col">Payment</th><th scope="col">Previous Dues</th><th scope="col">This Month Due</th><th scope="col">Paid Amount</th><th scope="col">Bid Status</th><th scope="col">Action</th></tr></thead>

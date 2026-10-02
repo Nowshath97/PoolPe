@@ -361,3 +361,18 @@ test('reminders are not eligible for setup groups or fully paid members', () => 
   run(`db.groups[0].status='active'; db.payments=[{groupId:'g1',memberId:'m0',month,amountDue:25000,amountPaid:25000}];`);
   assert.equal(run("buildMemberReminder('g1','m0').eligible"),false);
 });
+
+
+test('pending reminder queue includes arrears and partial payments, excludes paid and other groups', () => {
+  const { run } = setup();
+  run(`month='2026-10'; db.members[0].phone='9876543210';
+    db.payments=[{groupId:'g1',memberId:'m0',month:'2026-10',amountDue:25000,amountPaid:25000},
+    {groupId:'g1',memberId:'m1',month:'2026-09',amountDue:25000,amountPaid:25000},
+    {groupId:'g1',memberId:'m1',month:'2026-10',amountDue:25000,amountPaid:25000}];`);
+  assert.equal(run("pendingReminderMembers('g1').length"),19);
+  assert.equal(run("pendingReminderMembers('g1')[0].total"),25000);
+  assert.equal(run("pendingReminderMembers('g1')[0].phone"),'919876543210');
+  assert.equal(run("pendingReminderMembers('private').length"),0);
+  run("db.users[0].role='member'");
+  assert.equal(run("pendingReminderMembers('g1').length"),0);
+});

@@ -1,4 +1,52 @@
 /* Manual reminders: preview locally, then hand off to WhatsApp. No delivery claims. */
+function pendingReminderMembers(groupId) {
+  const g = db.groups.find(x => x.id === groupId && x.managerId === currentUser()?.id);
+  if (!g || currentUser()?.role !== 'manager') return [];
+  return getManagerSummary(g).rows.filter(r => r.started && r.balance + r.dues.amount > 0)
+    .map(r => ({ member: r.m, total: r.balance + r.dues.amount, phone: reminderPhone(r.m.phone) }));
+}
+
+function pendingReminderButton(s) {
+  return `<button class="reminder-button" data-group="${escapeHtml(s.g.id)}" onclick="openPendingReminders(this.dataset.group)" ${!s.rows.some(r => r.started && r.balance + r.dues.amount > 0) ? 'disabled' : ''}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>Remind pending</button>`;
+}
+
+function openPendingReminders(groupId) {
+  const members = pendingReminderMembers(groupId);
+  if (!members.length) return;
+  document.getElementById('pendingRemindersDialog')?.close();
+  const previousFocus = document.activeElement;
+  const dialog = document.createElement('dialog');
+  dialog.id = 'pendingRemindersDialog';
+  dialog.className = 'reminder-dialog reminder-queue';
+  dialog.setAttribute('aria-labelledby', 'pendingReminderTitle');
+  const numbers = [...new Set(members.map(r => r.phone).filter(Boolean))].join('\n');
+  dialog.innerHTML = `<div class="section-title"><h2 id="pendingReminderTitle">Pending payment reminders</h2><button class="btn secondary" id="closePendingReminders">Close</button></div>
+    <p class="muted">${members.length} members with an outstanding balance through ${escapeHtml(month)}, including previous dues.</p>
+    <p class="small muted">WhatsApp opens one recipient at a time. Review each message, send it in WhatsApp, then return here for the next member. Opening a reminder does not confirm it was sent.</p>
+    <ul class="reminder-recipient-list">${members.map(r => `<li><div><strong>${escapeHtml(r.member.name)}</strong><small>${r.phone ? '+' + escapeHtml(r.phone) : 'Number missing or invalid - enter it in the preview'} · ${money(r.total)} outstanding</small></div><button class="reminder-button" data-member="${escapeHtml(r.member.id)}">Review reminder</button></li>`).join('')}</ul>
+    <details class="reminder-export"><summary>Copy numbers for a WhatsApp broadcast</summary><p class="small muted">Create and select the broadcast recipients inside WhatsApp. This list cannot automatically populate a WhatsApp broadcast. Duplicate numbers are listed once; invalid or missing numbers are excluded.</p><label for="pendingReminderNumbers" class="small">Valid international phone numbers</label><textarea id="pendingReminderNumbers" rows="5" readonly>${escapeHtml(numbers)}</textarea><button class="btn secondary" id="copyPendingNumbers" ${numbers ? '' : 'disabled'}>Copy numbers</button><p class="small" role="status" id="pendingCopyStatus"></p></details>`;
+  dialog.querySelector('#closePendingReminders').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('close', () => { dialog.remove(); previousFocus?.focus(); });
+  dialog.querySelectorAll('[data-member]').forEach(button => {
+    button.addEventListener('click', () => {
+      const reminder = buildMemberReminder(groupId, button.dataset.member);
+      if (!reminder?.eligible) { button.textContent = 'No longer pending'; button.disabled = true; return; }
+      openMemberReminder(groupId, button.dataset.member);
+      button.textContent = 'Review again';
+    });
+  });
+  dialog.querySelector('#copyPendingNumbers').addEventListener('click', async () => {
+    const field = dialog.querySelector('#pendingReminderNumbers');
+    const status = dialog.querySelector('#pendingCopyStatus');
+    try { await navigator.clipboard.writeText(field.value); status.textContent = 'Numbers copied. Select recipients inside WhatsApp.'; }
+    catch { field.focus(); field.select(); status.textContent = 'Numbers selected. Use your device’s Copy command.'; }
+  });
+  document.body.appendChild(dialog);
+  dialog.showModal();
+}
+
+window.addEventListener('hashchange', () => document.getElementById('pendingRemindersDialog')?.close());
+
 function reminderPhone(value) {
   const raw = String(value || '').trim();
   if (!/^[+\d\s().-]+$/.test(raw)) return '';
